@@ -3,3 +3,4 @@
 /coverage
 /composer.lock
 /vendor
+/docs/node_modules

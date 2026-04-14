@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
 
 it('passes contains expectation using agent class string', function () {

@@ -3,6 +3,8 @@
 namespace LaravelAIEvaluation\LaravelAIEvaluation;
 
 use Illuminate\Support\ServiceProvider;
+use LaravelAIEvaluation\LaravelAIEvaluation\Console\PestProcessRunner;
+use LaravelAIEvaluation\LaravelAIEvaluation\Console\RunAgentEvalsCommand;
 
 class LaravelAIEvaluationServiceProvider extends ServiceProvider
 {
@@ -40,7 +42,9 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
             ], 'lang');*/
 
             // Registering package commands.
-            // $this->commands([]);
+            $this->commands([
+                RunAgentEvalsCommand::class,
+            ]);
         }
     }
 
@@ -55,6 +59,10 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
         // Register the main class to use with the facade
         $this->app->singleton('laravel-ai-evaluation', function () {
             return new LaravelAIEvaluation;
+        });
+
+        $this->app->singleton(PestProcessRunner::class, function () {
+            return new PestProcessRunner;
         });
     }
 }

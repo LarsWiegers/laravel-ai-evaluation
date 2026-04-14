@@ -39,7 +39,7 @@ AiEval::agent(SupportAgent::class)
     ->assertPasses();
 ```
 
-Recommended location for these eval tests is `tests/AiEvals`.
+Recommended location for these eval tests is `tests/AgentEvals`.
 
 ### Testing
 
