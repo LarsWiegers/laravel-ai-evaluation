@@ -86,7 +86,9 @@ php artisan ai-evals:run
 ## Learn More
 
 - [When to run evals](./when-to-run-evals)
-- [Expectations](./expectations)
+- [Expectations overview](./expectations)
+- [Determenistic expectations](./determenistic-expectations)
+- [LLM-as-judge expectations](./llm-as-judge-expectations)
 - [Run in Pest](./running-in-pest)
 - [Run standalone](./running-standalone)
 - [Run in CI](./running-in-ci)

@@ -10,12 +10,14 @@ class EvalResult
 {
     /**
      * @param  array<int, string>  $failures
+     * @param  array<int, array<string, mixed>>  $expectationResults
      */
     public function __construct(
         protected string $caseId,
         protected string $input,
         protected string $output,
         protected array $failures,
+        protected array $expectationResults = [],
     ) {
     }
 
@@ -35,6 +37,14 @@ class EvalResult
     public function output(): string
     {
         return $this->output;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function expectationResults(): array
+    {
+        return $this->expectationResults;
     }
 
     public function assertPasses(): self

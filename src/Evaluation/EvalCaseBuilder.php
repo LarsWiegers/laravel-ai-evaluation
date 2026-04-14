@@ -13,6 +13,11 @@ class EvalCaseBuilder
 
     protected ?string $exact = null;
 
+    /**
+     * @var array<int, array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}>
+     */
+    protected array $judgeExpectations = [];
+
     protected ?string $caseId = null;
 
     protected string $input = '';
@@ -59,6 +64,35 @@ class EvalCaseBuilder
         return $this;
     }
 
+    public function expectJudge(string $criteria, ?float $threshold = null, object|string|null $judge = null): self
+    {
+        $this->judgeExpectations[] = [
+            'criteria' => $criteria,
+            'reference' => null,
+            'threshold' => $threshold,
+            'judge' => $judge,
+        ];
+
+        return $this;
+    }
+
+    public function expectJudgeAgainst(
+        string $reference,
+        string $criteria,
+        ?float $threshold = null,
+        object|string|null $judge = null,
+    ): self
+    {
+        $this->judgeExpectations[] = [
+            'criteria' => $criteria,
+            'reference' => $reference,
+            'threshold' => $threshold,
+            'judge' => $judge,
+        ];
+
+        return $this;
+    }
+
     public function run(): EvalResult
     {
         return $this->runner->run(
@@ -67,6 +101,7 @@ class EvalCaseBuilder
             input: $this->input,
             contains: $this->contains,
             exact: $this->exact,
+            judgeExpectations: $this->judgeExpectations,
         );
     }
 

@@ -8,14 +8,27 @@ export default defineConfig({
       provider: 'local',
     },
     nav: [
-      { text: 'Overview', link: '/' },
+      { text: 'Home', link: '/' },
+      {
+        text: 'Pest',
+        items: [{ text: 'Run in Pest', link: '/running-in-pest' }],
+      },
+      {
+        text: 'Standalone',
+        items: [{ text: 'Run standalone', link: '/running-standalone' }],
+      },
+      {
+        text: 'Expectations',
+        items: [
+          { text: 'Overview', link: '/expectations' },
+          { text: 'Determenistic expectations', link: '/determenistic-expectations' },
+          { text: 'LLM-as-judge expectations', link: '/llm-as-judge-expectations' },
+        ],
+      },
       {
         text: 'Guides',
         items: [
           { text: 'When to run evals', link: '/when-to-run-evals' },
-          { text: 'Expectations', link: '/expectations' },
-          { text: 'Run in Pest', link: '/running-in-pest' },
-          { text: 'Run standalone', link: '/running-standalone' },
           { text: 'Run in CI', link: '/running-in-ci' },
         ],
       },
@@ -26,10 +39,23 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
-          { text: 'Expectations', link: '/expectations' },
-          { text: 'Run in Pest', link: '/running-in-pest' },
-          { text: 'Run standalone', link: '/running-standalone' },
           { text: 'Run in CI', link: '/running-in-ci' },
+        ],
+      },
+      {
+        text: 'Pest',
+        items: [{ text: 'Run in Pest', link: '/running-in-pest' }],
+      },
+      {
+        text: 'Standalone',
+        items: [{ text: 'Run standalone', link: '/running-standalone' }],
+      },
+      {
+        text: 'Expectations',
+        items: [
+          { text: 'Overview', link: '/expectations' },
+          { text: 'Determenistic expectations', link: '/determenistic-expectations' },
+          { text: 'LLM-as-judge expectations', link: '/llm-as-judge-expectations' },
         ],
       },
     ],
