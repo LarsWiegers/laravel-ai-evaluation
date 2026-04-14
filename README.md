@@ -4,7 +4,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/LarsWiegers/laravel-ai-evaluation.svg?style=flat-square)](https://packagist.org/packages/LarsWiegers/laravel-ai-evaluation)
 ![GitHub Actions](https://github.com/LarsWiegers/laravel-ai-evaluation/actions/workflows/main.yml/badge.svg)
 
-This is where your description should go. Try and limit it to a paragraph or two, and maybe throw in a mention of what PSRs you support to avoid any confusion with users and contributors.
+Laravel AI Evaluation helps you run LLM output evaluations directly in your test suite using real model calls.
 
 ## Installation
 
@@ -17,8 +17,29 @@ composer require larswiegers/laravel-ai-evaluation
 ## Usage
 
 ```php
-// Usage description here
+use App\Ai\Agents\SupportAgent;
+use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluationFacade as AiEval;
+
+AiEval::agent(SupportAgent::class)
+    ->case('refund-policy')
+    ->input('What is your refund policy?')
+    ->expectContains(['refund', '30 days'])
+    ->run()
+    ->assertPasses();
 ```
+
+You can also assert exact outputs:
+
+```php
+AiEval::agent(SupportAgent::class)
+    ->case('healthcheck')
+    ->input('Reply with exactly: OK')
+    ->expectExact('OK')
+    ->run()
+    ->assertPasses();
+```
+
+Recommended location for these eval tests is `tests/AiEvals`.
 
 ### Testing
 
