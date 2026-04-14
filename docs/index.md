@@ -1,0 +1,94 @@
+---
+layout: home
+
+hero:
+  name: Laravel AI Evaluation
+  text: Real-call LLM evals for Laravel AI
+  tagline: Validate model output quality in Pest tests and fail CI when behavior regresses.
+  actions:
+    - theme: brand
+      text: Run in Pest
+      link: /running-in-pest
+    - theme: alt
+      text: Run Standalone
+      link: /running-standalone
+
+features:
+  - title: Real model calls
+    details: Evaluate actual AI behavior, not mocked responses.
+  - title: Pest native
+    details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
+  - title: CI ready
+    details: Evals hard-fail when expectations are not met.
+---
+
+## Quick Start
+
+### 1) Install
+
+```bash
+composer require larswiegers/laravel-ai-evaluation
+```
+
+### 2) Configure your run mode
+
+::: code-group
+
+```php [Pest]
+pest()->extend(Tests\TestCase::class)->in('Feature', 'AgentEvals');
+```
+
+```text [Standalone]
+No additional setup is required.
+```
+
+:::
+
+### 3) Create a test
+
+Create `tests/AgentEvals/SupportAgentEvalTest.php`:
+
+```bash
+mkdir -p tests/AgentEvals && touch tests/AgentEvals/SupportAgentEvalTest.php
+```
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use App\Ai\Agents\SupportAgent;
+use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
+
+it('returns refund policy details', function () {
+    LaravelAIEvaluation::agent(SupportAgent::class)
+        ->input('What is your refund policy?')
+        ->expectContains(['refund', '30 days'])
+        ->run()
+        ->assertPasses();
+});
+```
+
+### 4) Run
+
+::: code-group
+
+```bash [Pest]
+vendor/bin/pest tests/AgentEvals
+```
+
+```bash [Standalone]
+php artisan ai-evals:run
+```
+
+:::
+
+## Learn More
+
+- [When to run evals](./when-to-run-evals)
+- [Expectations overview](./expectations)
+- [Determenistic expectations](./determenistic-expectations)
+- [LLM-as-judge expectations](./llm-as-judge-expectations)
+- [Run in Pest](./running-in-pest)
+- [Run standalone](./running-standalone)
+- [Run in CI](./running-in-ci)
