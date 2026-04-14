@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  base: '/laravel-ai-evaluation/',
   title: 'Laravel AI Evaluation',
   description: 'Real-call LLM evals for Laravel AI',
   themeConfig: {
