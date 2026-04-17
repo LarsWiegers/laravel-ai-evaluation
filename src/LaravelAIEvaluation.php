@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation;
+namespace LaravelAIEvaluation;
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
+use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
 
 class LaravelAIEvaluation
 {

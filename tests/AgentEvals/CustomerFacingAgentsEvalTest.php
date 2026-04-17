@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
+use LaravelAIEvaluation\LaravelAIEvaluation;
 use Tests\Fixtures\Agents\AppointmentBookingAgent;
 use Tests\Fixtures\Agents\BillingInvoiceAgent;
 use Tests\Fixtures\Agents\CustomerSupportAgent;

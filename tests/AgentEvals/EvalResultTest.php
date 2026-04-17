@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalResult;
+use LaravelAIEvaluation\Evaluation\EvalResult;
 use PHPUnit\Framework\AssertionFailedError;
 
 it('assertPasses returns self when eval passes', function () {

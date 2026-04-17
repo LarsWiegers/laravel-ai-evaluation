@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation;
+namespace LaravelAIEvaluation;
 
 use Illuminate\Support\ServiceProvider;
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\PestProcessRunner;
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\RunAgentEvalsCommand;
+use LaravelAIEvaluation\Console\PestProcessRunner;
+use LaravelAIEvaluation\Console\RunAgentEvalsCommand;
+use LaravelAIEvaluation\Evaluation\EvalRunSummary;
 
 class LaravelAIEvaluationServiceProvider extends ServiceProvider
 {
@@ -33,6 +34,10 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
 
         $this->app->singleton(PestProcessRunner::class, function () {
             return new PestProcessRunner;
+        });
+
+        $this->app->singleton(EvalRunSummary::class, function () {
+            return new EvalRunSummary;
         });
     }
 }

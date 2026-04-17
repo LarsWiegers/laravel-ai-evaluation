@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use Laravel\Ai\AiServiceProvider;
-use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluationServiceProvider;
+use LaravelAIEvaluation\LaravelAIEvaluationServiceProvider;
 
 class TestCase extends \Orchestra\Testbench\TestCase
 {

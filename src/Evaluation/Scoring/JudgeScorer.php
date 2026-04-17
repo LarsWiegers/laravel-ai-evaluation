@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring;
+namespace LaravelAIEvaluation\Evaluation\Scoring;
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
 
 class JudgeScorer
 {

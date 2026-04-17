@@ -12,7 +12,7 @@ Example `tests/AgentEvals/SupportAgentEvalTest.php`:
 declare(strict_types=1);
 
 use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\AIEval;
 
 it('returns refund policy details', function () {
     AIEval::agent(SupportAgent::class)

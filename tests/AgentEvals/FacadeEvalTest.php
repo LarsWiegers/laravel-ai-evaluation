@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
+use LaravelAIEvaluation\LaravelAIEvaluation;
 use PHPUnit\Framework\AssertionFailedError;
 
 it('passes contains expectation using agent class string', function () {

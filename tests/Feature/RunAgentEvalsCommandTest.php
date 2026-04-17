@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\PestProcessRunner;
+use LaravelAIEvaluation\Console\PestProcessRunner;
 
 it('runs standalone eval command with default path', function () {
     $fakeRunner = new class extends PestProcessRunner {

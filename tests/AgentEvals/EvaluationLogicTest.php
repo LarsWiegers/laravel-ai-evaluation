@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalRunner;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
+use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
 
 it('contains scorer returns missing substrings', function () {
     $scorer = new ContainsScorer;
@@ -371,6 +371,31 @@ it('retries transient agent prompt failures when configured', function () {
 
     expect($result->passed())->toBeTrue();
     expect($agent->attempts)->toBe(2);
+});
+
+it('does not retry non transient agent failures', function () {
+    $runner = new EvalRunner(retries: 3, retrySleepMs: 0);
+    $agent = new class {
+        public int $attempts = 0;
+
+        public function prompt(string $prompt): string
+        {
+            $this->attempts++;
+
+            throw new RuntimeException('Invalid response schema');
+        }
+    };
+
+    expect(function () use ($runner, $agent): void {
+        $runner->run(
+            agent: $agent,
+            caseId: 'no-retry-agent',
+            input: 'Hello',
+            contains: ['retry succeeded'],
+        );
+    })->toThrow(RuntimeException::class, 'Invalid response schema');
+
+    expect($agent->attempts)->toBe(1);
 });
 
 it('retries transient judge failures when configured', function () {

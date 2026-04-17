@@ -1,20 +1,17 @@
 <?php
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation;
+declare(strict_types=1);
+
+namespace LaravelAIEvaluation;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation
+ * @see \LaravelAIEvaluation\LaravelAIEvaluation
  */
 class LaravelAIEvaluationFacade extends Facade
 {
-    /**
-     * Get the registered name of the component.
-     *
-     * @return string
-     */
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return 'laravel-ai-evaluation';
     }

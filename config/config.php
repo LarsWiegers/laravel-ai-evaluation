@@ -16,11 +16,12 @@ return [
     ],
 
     'judge' => [
-        'agent' => LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\DefaultJudgeAgent::class,
+        'agent' => LaravelAIEvaluation\Evaluation\Judge\DefaultJudgeAgent::class,
         'threshold' => 0.7,
     ],
 
     'standalone' => [
         'path' => 'tests/AgentEvals',
+        'binary' => 'vendor/bin/pest',
     ],
 ];

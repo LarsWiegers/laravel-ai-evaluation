@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation;
+namespace LaravelAIEvaluation\Evaluation;
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
 use RuntimeException;
 use Throwable;
 
@@ -17,6 +17,7 @@ class EvalRunner
         protected ContainsScorer $containsScorer = new ContainsScorer,
         protected ExactScorer $exactScorer = new ExactScorer,
         protected ?JudgeScorer $judgeScorer = null,
+        protected ?EvalRunSummary $runSummary = null,
         protected ?int $retries = null,
         protected ?int $retrySleepMs = null,
     ) {
@@ -27,6 +28,7 @@ class EvalRunner
 
         $this->retries = $this->retries ?? max(0, (int) config('laravel-ai-evaluation.retries', 0));
         $this->retrySleepMs = $this->retrySleepMs ?? max(0, (int) config('laravel-ai-evaluation.retry_sleep_ms', 0));
+        $this->runSummary = $this->runSummary ?? (function_exists('app') ? app(EvalRunSummary::class) : new EvalRunSummary);
     }
 
     /**
@@ -125,7 +127,7 @@ class EvalRunner
 
         $result = new EvalResult($caseId, $input, $output, $failures, $expectationResults, $location, $usage);
 
-        EvalRunSummary::record($result);
+        $this->runSummary->record($result);
 
         if ((bool) config('laravel-ai-evaluation.verbose', false)) {
             $result->dump(format: (string) config('laravel-ai-evaluation.format', 'text'));
@@ -159,7 +161,7 @@ class EvalRunner
                     );
                 }
 
-                if ($attempt >= $this->retries) {
+                if ($attempt >= $this->retries || ! $this->shouldRetry($exception)) {
                     throw $exception;
                 }
 
@@ -188,7 +190,7 @@ class EvalRunner
                     judge: $judgeExpectation['judge'] ?? null,
                 );
             } catch (Throwable $exception) {
-                if ($attempt >= $this->retries) {
+                if ($attempt >= $this->retries || ! $this->shouldRetry($exception)) {
                     throw $exception;
                 }
 
@@ -205,6 +207,33 @@ class EvalRunner
         }
 
         usleep($this->retrySleepMs * 1000);
+    }
+
+    protected function shouldRetry(Throwable $exception): bool
+    {
+        $class = strtolower($exception::class);
+        $message = strtolower($exception->getMessage());
+        $code = is_numeric($exception->getCode()) ? (int) $exception->getCode() : null;
+
+        if ($code === 401 || str_contains($message, 'unauthorized')) {
+            return false;
+        }
+
+        if ($code === 429 || ($code !== null && $code >= 500 && $code < 600)) {
+            return true;
+        }
+
+        if (str_contains($class, 'connection') || str_contains($class, 'timeout')) {
+            return true;
+        }
+
+        foreach (['timed out', 'timeout', 'temporar', 'rate limit', 'too many requests', 'connection', 'try again', 'service unavailable'] as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function stringifyResponse(mixed $response): string

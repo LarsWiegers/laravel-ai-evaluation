@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\DefaultJudgeAgent;
+use LaravelAIEvaluation\Evaluation\Judge\DefaultJudgeAgent;
 
 it('prompts through laravel ai anonymous agent fallback', function () {
     $judge = new class extends DefaultJudgeAgent

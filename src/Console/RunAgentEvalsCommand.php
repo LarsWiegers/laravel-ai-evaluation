@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Console;
+namespace LaravelAIEvaluation\Console;
 
 use Illuminate\Console\Command;
 use Throwable;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation;
+namespace LaravelAIEvaluation\Evaluation;
 
 class EvalCaseBuilder
 {

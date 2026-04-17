@@ -18,7 +18,7 @@ composer require larswiegers/laravel-ai-evaluation
 
 ```php
 use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\AIEval;
 
 AIEval::agent(SupportAgent::class)
     ->case('refund-policy')

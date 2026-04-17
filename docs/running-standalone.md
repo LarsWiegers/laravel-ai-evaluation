@@ -24,6 +24,16 @@ php artisan ai-evals:run --filter="refund policy"
 
 By default, the command runs `tests/AgentEvals`.
 
+To customize the Pest binary path (for example on non-standard setups), set:
+
+```php
+// config/laravel-ai-evaluation.php
+'standalone' => [
+    'path' => 'tests/AgentEvals',
+    'binary' => 'vendor/bin/pest',
+],
+```
+
 ## Output and summary options
 
 The standalone runner supports verbose eval output format configuration:

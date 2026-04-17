@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation;
+namespace LaravelAIEvaluation;
 
 final class AIEval extends LaravelAIEvaluation
 {

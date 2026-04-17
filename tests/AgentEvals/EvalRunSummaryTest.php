@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalResult;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalRunSummary;
+use LaravelAIEvaluation\Evaluation\EvalResult;
+use LaravelAIEvaluation\Evaluation\EvalRunSummary;
 
 it('prints text summary with pass fail and token totals', function () {
-    EvalRunSummary::resetForTests();
+    $summary = app(EvalRunSummary::class);
+    $summary->resetForTests();
     config()->set('laravel-ai-evaluation.summary.enabled', true);
     config()->set('laravel-ai-evaluation.summary.format', 'text');
     config()->set('laravel-ai-evaluation.summary.currency', 'USD');
 
-    EvalRunSummary::record(new EvalResult(
+    $summary->record(new EvalResult(
         caseId: 'one',
         input: 'a',
         output: 'b',
@@ -20,7 +21,7 @@ it('prints text summary with pass fail and token totals', function () {
         usage: ['prompt_tokens' => 10, 'completion_tokens' => 4, 'total_tokens' => 14, 'cost' => 0.001],
     ));
 
-    EvalRunSummary::record(new EvalResult(
+    $summary->record(new EvalResult(
         caseId: 'two',
         input: 'a',
         output: 'b',
@@ -30,7 +31,7 @@ it('prints text summary with pass fail and token totals', function () {
     ));
 
     $lines = [];
-    EvalRunSummary::flush(function (string $line) use (&$lines): void {
+    $summary->flush(function (string $line) use (&$lines): void {
         $lines[] = $line;
     });
 
@@ -42,17 +43,18 @@ it('prints text summary with pass fail and token totals', function () {
     expect($output)->toContain('Total tokens: 23');
     expect($output)->toContain('Estimated cost: USD 0.003500');
 
-    EvalRunSummary::resetForTests();
+    $summary->resetForTests();
     config()->set('laravel-ai-evaluation.summary.enabled', false);
 });
 
 it('prints json summary when configured', function () {
-    EvalRunSummary::resetForTests();
+    $summary = app(EvalRunSummary::class);
+    $summary->resetForTests();
     config()->set('laravel-ai-evaluation.summary.enabled', true);
     config()->set('laravel-ai-evaluation.summary.format', 'json');
     config()->set('laravel-ai-evaluation.summary.currency', 'EUR');
 
-    EvalRunSummary::record(new EvalResult(
+    $summary->record(new EvalResult(
         caseId: 'one',
         input: 'a',
         output: 'b',
@@ -62,7 +64,7 @@ it('prints json summary when configured', function () {
     ));
 
     $lines = [];
-    EvalRunSummary::flush(function (string $line) use (&$lines): void {
+    $summary->flush(function (string $line) use (&$lines): void {
         $lines[] = $line;
     });
 
@@ -75,6 +77,6 @@ it('prints json summary when configured', function () {
     expect($payload['total_tokens'])->toBe(3);
     expect($payload['currency'])->toBe('EUR');
 
-    EvalRunSummary::resetForTests();
+    $summary->resetForTests();
     config()->set('laravel-ai-evaluation.summary.enabled', false);
 });
