@@ -18,16 +18,6 @@ class DefaultJudgeAgent
             return $this->stringifyResponse($response);
         }
 
-        if (function_exists('\\ai')) {
-            $client = call_user_func('ai');
-
-            if (is_object($client) && method_exists($client, 'prompt')) {
-                $response = $client->prompt($prompt);
-
-                return $this->stringifyResponse($response);
-            }
-        }
-
         $response = $this->promptWithLaravelAiSdk($prompt);
 
         return $this->stringifyResponse($response);
