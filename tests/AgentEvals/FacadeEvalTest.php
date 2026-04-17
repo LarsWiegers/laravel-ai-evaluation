@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
+use PHPUnit\Framework\AssertionFailedError;
 
 it('passes contains expectation using agent class string', function () {
     $result = LaravelAIEvaluation::agent(FakeSupportAgent::class)
@@ -31,7 +32,7 @@ it('throws when expectations fail', function () {
         ->expectExact('NOT_OK')
         ->run()
         ->assertPasses();
-})->throws(RuntimeException::class);
+})->throws(AssertionFailedError::class);
 
 it('uses pest test name when case is omitted', function () {
     $result = LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
@@ -40,7 +41,7 @@ it('uses pest test name when case is omitted', function () {
         ->run();
 
     expect(fn () => $result->assertPasses())
-        ->toThrow(RuntimeException::class, "AI eval 'it uses pest test name when case is omitted' failed");
+        ->toThrow(AssertionFailedError::class, "AI eval 'it uses pest test name when case is omitted' failed");
 });
 
 class FakeSupportAgent

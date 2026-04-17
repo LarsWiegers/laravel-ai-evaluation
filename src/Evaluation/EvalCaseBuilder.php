@@ -22,6 +22,8 @@ class EvalCaseBuilder
 
     protected string $input = '';
 
+    protected object|string|null $judge = null;
+
     public function __construct(
         protected object|string $agent,
         protected ?EvalRunner $runner = null,
@@ -70,7 +72,7 @@ class EvalCaseBuilder
             'criteria' => $criteria,
             'reference' => null,
             'threshold' => $threshold,
-            'judge' => $judge,
+            'judge' => $judge ?? $this->judge,
         ];
 
         return $this;
@@ -87,7 +89,7 @@ class EvalCaseBuilder
             'criteria' => $criteria,
             'reference' => $reference,
             'threshold' => $threshold,
-            'judge' => $judge,
+            'judge' => $judge ?? $this->judge,
         ];
 
         return $this;
@@ -102,7 +104,15 @@ class EvalCaseBuilder
             contains: $this->contains,
             exact: $this->exact,
             judgeExpectations: $this->judgeExpectations,
+            location: $this->resolveLocation(),
         );
+    }
+
+    public function useJudge(object|string $judge): self
+    {
+        $this->judge = $judge;
+
+        return $this;
     }
 
     protected function resolveCaseId(): string
@@ -140,5 +150,32 @@ class EvalCaseBuilder
         }
 
         return 'unnamed-case';
+    }
+
+    protected function resolveLocation(): ?string
+    {
+        $packagePath = str_replace('\\', '/', __DIR__);
+
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+            if (! isset($frame['file']) || ! is_string($frame['file'])) {
+                continue;
+            }
+
+            $file = str_replace('\\', '/', $frame['file']);
+
+            if (str_starts_with($file, $packagePath)) {
+                continue;
+            }
+
+            if (! str_contains($file, '/tests/')) {
+                continue;
+            }
+
+            $line = isset($frame['line']) && is_int($frame['line']) ? $frame['line'] : 1;
+
+            return sprintf('%s:%d', $frame['file'], $line);
+        }
+
+        return null;
     }
 }

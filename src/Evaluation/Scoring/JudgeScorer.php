@@ -15,7 +15,7 @@ class JudgeScorer
     }
 
     /**
-     * @return array{score: float, threshold: float, passed: bool, reason: string}
+     * @return array{score: float, threshold: float, passed: bool, reason: string, usage: array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}}
      */
     public function score(
         string $input,
@@ -33,6 +33,7 @@ class JudgeScorer
             'threshold' => $targetThreshold,
             'passed' => $verdict->score >= $targetThreshold,
             'reason' => $verdict->reason,
+            'usage' => $verdict->usage,
         ];
     }
 }

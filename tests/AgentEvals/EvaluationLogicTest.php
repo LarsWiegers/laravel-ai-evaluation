@@ -95,6 +95,23 @@ it('builder combines contains expectations from string and array', function () {
     expect($result->passed())->toBeTrue();
 });
 
+it('builder captures test file location on result', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'alpha beta gamma';
+        }
+    });
+
+    $result = $builder
+        ->case('captures-location')
+        ->input('ignored')
+        ->expectContains('alpha')
+        ->run();
+
+    expect($result->location())->toContain('tests/AgentEvals/EvaluationLogicTest.php');
+});
+
 it('result includes both exact and contains failures when both fail', function () {
     $runner = new EvalRunner;
     $agent = new class {
@@ -256,5 +273,58 @@ it('passes explicit judge into expectJudgeAgainst', function () {
 
     expect($result->passed())->toBeTrue();
 });
+
+it('applies useJudge default for expectJudge and expectJudgeAgainst', function () {
+    $runner = new EvalRunner(
+        judgeScorer: new JudgeScorer(
+            new class implements JudgeClient {
+                public function evaluate(string $input, string $actualOutput, string $criteria, ?string $reference = null, object|string|null $judge = null): JudgeVerdict
+                {
+                    expect($judge)->toBeInstanceOf(InlineJudgeAgent::class);
+
+                    return new JudgeVerdict(0.95, 'Default fluent judge was used.');
+                }
+            },
+            0.7,
+        ),
+    );
+
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    }, $runner);
+
+    $result = $builder
+        ->input('What is your refund policy?')
+        ->useJudge(new InlineJudgeAgent)
+        ->expectJudge('Answer must be policy accurate.', threshold: 0.8)
+        ->expectJudgeAgainst(
+            reference: 'Refunds are available within 30 days.',
+            criteria: 'Answer must match reference.',
+            threshold: 0.8,
+        )
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+});
+
+it('wraps 401 prompt failures with api key guidance', function () {
+    $runner = new EvalRunner;
+    $agent = new class {
+        public function prompt(string $prompt): string
+        {
+            throw new RuntimeException('401 Unauthorized', 401);
+        }
+    };
+
+    $runner->run(
+        agent: $agent,
+        caseId: 'auth-error',
+        input: 'Hello',
+        contains: ['ignored'],
+    );
+})->throws(RuntimeException::class, 'Authentication error. Check your AI provider API key is configured.');
 
 class InlineJudgeAgent {}

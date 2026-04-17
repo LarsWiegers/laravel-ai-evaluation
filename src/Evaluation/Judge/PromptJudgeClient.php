@@ -29,6 +29,7 @@ class PromptJudgeClient implements JudgeClient
 
         $judgePrompt = $this->buildJudgePrompt($input, $actualOutput, $criteria, $reference);
         $response = $resolvedJudgeAgent->prompt($judgePrompt);
+        $usage = $this->extractUsage($response);
         $raw = $this->stringifyResponse($response);
         $payload = $this->decodePayload($raw);
 
@@ -46,7 +47,7 @@ class PromptJudgeClient implements JudgeClient
             throw new RuntimeException('Judge score must be between 0 and 1.');
         }
 
-        return new JudgeVerdict($score, trim($payload['reason']));
+        return new JudgeVerdict($score, trim($payload['reason']), $usage);
     }
 
     protected function buildJudgePrompt(
@@ -130,5 +131,56 @@ PROMPT;
         }
 
         throw new RuntimeException('Unable to convert judge response to string output.');
+    }
+
+    /**
+     * @return array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}
+     */
+    protected function extractUsage(mixed $response): array
+    {
+        $source = null;
+
+        if (is_array($response) && isset($response['usage']) && is_array($response['usage'])) {
+            $source = $response['usage'];
+        }
+
+        if (is_object($response) && isset($response->usage)) {
+            if (is_array($response->usage)) {
+                $source = $response->usage;
+            }
+
+            if (is_object($response->usage)) {
+                $source = get_object_vars($response->usage);
+            }
+        }
+
+        if (! is_array($source)) {
+            return [];
+        }
+
+        $prompt = $source['prompt_tokens'] ?? $source['input_tokens'] ?? null;
+        $completion = $source['completion_tokens'] ?? $source['output_tokens'] ?? null;
+        $total = $source['total_tokens'] ?? null;
+        $cost = $source['cost'] ?? $source['total_cost'] ?? null;
+
+        $usage = [];
+
+        if (is_numeric($prompt)) {
+            $usage['prompt_tokens'] = (int) $prompt;
+        }
+
+        if (is_numeric($completion)) {
+            $usage['completion_tokens'] = (int) $completion;
+        }
+
+        if (is_numeric($total)) {
+            $usage['total_tokens'] = (int) $total;
+        }
+
+        if (is_numeric($cost)) {
+            $usage['cost'] = (float) $cost;
+        }
+
+        return $usage;
     }
 }
