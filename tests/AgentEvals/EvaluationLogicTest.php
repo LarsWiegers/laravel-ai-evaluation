@@ -112,6 +112,24 @@ it('builder captures test file location on result', function () {
     expect($result->location())->toContain('tests/AgentEvals/EvaluationLogicTest.php');
 });
 
+it('builder supports explicit location override', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'alpha beta gamma';
+        }
+    });
+
+    $result = $builder
+        ->case('explicit-location')
+        ->location('tests/AgentEvals/ExplicitLocationTest.php:12')
+        ->input('ignored')
+        ->expectContains('alpha')
+        ->run();
+
+    expect($result->location())->toBe('tests/AgentEvals/ExplicitLocationTest.php:12');
+});
+
 it('result includes both exact and contains failures when both fail', function () {
     $runner = new EvalRunner;
     $agent = new class {
@@ -326,5 +344,81 @@ it('wraps 401 prompt failures with api key guidance', function () {
         contains: ['ignored'],
     );
 })->throws(RuntimeException::class, 'Authentication error. Check your AI provider API key is configured.');
+
+it('retries transient agent prompt failures when configured', function () {
+    $runner = new EvalRunner(retries: 1, retrySleepMs: 0);
+    $agent = new class {
+        public int $attempts = 0;
+
+        public function prompt(string $prompt): string
+        {
+            $this->attempts++;
+
+            if ($this->attempts === 1) {
+                throw new RuntimeException('temporary provider timeout');
+            }
+
+            return 'retry succeeded';
+        }
+    };
+
+    $result = $runner->run(
+        agent: $agent,
+        caseId: 'retry-agent',
+        input: 'Hello',
+        contains: ['retry succeeded'],
+    );
+
+    expect($result->passed())->toBeTrue();
+    expect($agent->attempts)->toBe(2);
+});
+
+it('retries transient judge failures when configured', function () {
+    $judgeClient = new class implements JudgeClient {
+        public int $attempts = 0;
+
+        public function evaluate(string $input, string $actualOutput, string $criteria, ?string $reference = null, object|string|null $judge = null): JudgeVerdict
+        {
+            $this->attempts++;
+
+            if ($this->attempts === 1) {
+                throw new RuntimeException('temporary judge timeout');
+            }
+
+            return new JudgeVerdict(0.9, 'Recovered after retry.');
+        }
+    };
+
+    $runner = new EvalRunner(
+        judgeScorer: new JudgeScorer(
+            $judgeClient,
+            0.7,
+        ),
+        retries: 1,
+        retrySleepMs: 0,
+    );
+
+    $agent = new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    };
+
+    $result = $runner->run(
+        agent: $agent,
+        caseId: 'retry-judge',
+        input: 'What is your refund policy?',
+        judgeExpectations: [[
+            'criteria' => 'Answer should mention refund window.',
+            'reference' => null,
+            'threshold' => 0.8,
+            'judge' => null,
+        ]],
+    );
+
+    expect($result->passed())->toBeTrue();
+    expect($judgeClient->attempts)->toBe(2);
+});
 
 class InlineJudgeAgent {}

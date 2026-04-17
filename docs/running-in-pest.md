@@ -12,10 +12,10 @@ Example `tests/AgentEvals/SupportAgentEvalTest.php`:
 declare(strict_types=1);
 
 use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation;
+use LaravelAIEvaluation\LaravelAIEvaluation\AIEval;
 
 it('returns refund policy details', function () {
-    LaravelAIEvaluation::agent(SupportAgent::class)
+    AIEval::agent(SupportAgent::class)
         ->case('refund-policy')
         ->input('What is your refund policy?')
         ->expectContains(['refund', '30 days'])

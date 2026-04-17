@@ -24,6 +24,8 @@ class EvalCaseBuilder
 
     protected object|string|null $judge = null;
 
+    protected ?string $location = null;
+
     public function __construct(
         protected object|string $agent,
         protected ?EvalRunner $runner = null,
@@ -104,8 +106,15 @@ class EvalCaseBuilder
             contains: $this->contains,
             exact: $this->exact,
             judgeExpectations: $this->judgeExpectations,
-            location: $this->resolveLocation(),
+            location: $this->location ?? $this->resolveLocation(),
         );
+    }
+
+    public function location(string $location): self
+    {
+        $this->location = $location;
+
+        return $this;
     }
 
     public function useJudge(object|string $judge): self
@@ -121,7 +130,7 @@ class EvalCaseBuilder
             return $this->caseId;
         }
 
-        foreach (debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT) as $frame) {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 50) as $frame) {
             if (! isset($frame['object']) || ! is_object($frame['object'])) {
                 continue;
             }
@@ -156,7 +165,7 @@ class EvalCaseBuilder
     {
         $packagePath = str_replace('\\', '/', __DIR__);
 
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 50) as $frame) {
             if (! isset($frame['file']) || ! is_string($frame['file'])) {
                 continue;
             }

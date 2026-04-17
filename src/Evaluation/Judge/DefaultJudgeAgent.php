@@ -38,8 +38,7 @@ class DefaultJudgeAgent
         }
 
         if (trait_exists('Laravel\\Ai\\Promptable')) {
-            $agentClass = $this->createPromptableJudgeAgent();
-            $agent = new $agentClass;
+            $agent = $this->createPromptableJudgeAgent();
 
             if (! method_exists($agent, 'prompt')) {
                 throw new RuntimeException('Laravel AI Promptable fallback must implement a prompt method.');
@@ -53,12 +52,24 @@ class DefaultJudgeAgent
         );
     }
 
-    protected function createPromptableJudgeAgent(): string
+    protected function createPromptableJudgeAgent(): object
     {
-        return get_class(eval(sprintf(
-            'return new class { use \\Laravel\\Ai\\Promptable; public function instructions(): string { return %s; } };',
-            var_export($this->judgeInstructions(), true),
-        )));
+        $instructions = $this->judgeInstructions();
+
+        return new class($instructions)
+        {
+            use \Laravel\Ai\Promptable;
+
+            public function __construct(
+                protected string $instructions,
+            ) {
+            }
+
+            public function instructions(): string
+            {
+                return $this->instructions;
+            }
+        };
     }
 
     protected function makeAnonymousAgent(string $anonymousAgentClass): object

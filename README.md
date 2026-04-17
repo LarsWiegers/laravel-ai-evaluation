@@ -18,9 +18,9 @@ composer require larswiegers/laravel-ai-evaluation
 
 ```php
 use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluationFacade as AiEval;
+use LaravelAIEvaluation\LaravelAIEvaluation\AIEval;
 
-AiEval::agent(SupportAgent::class)
+AIEval::agent(SupportAgent::class)
     ->case('refund-policy')
     ->input('What is your refund policy?')
     ->expectContains(['refund', '30 days'])
@@ -31,7 +31,7 @@ AiEval::agent(SupportAgent::class)
 You can also assert exact outputs:
 
 ```php
-AiEval::agent(SupportAgent::class)
+AIEval::agent(SupportAgent::class)
     ->case('healthcheck')
     ->input('Reply with exactly: OK')
     ->expectExact('OK')
@@ -42,7 +42,7 @@ AiEval::agent(SupportAgent::class)
 And evaluate with an LLM judge rubric + reference answer:
 
 ```php
-AiEval::agent(SupportAgent::class)
+AIEval::agent(SupportAgent::class)
     ->input('What is your refund policy?')
     ->expectJudgeAgainst(
         reference: 'Refunds are available within 30 days of purchase.',
@@ -57,7 +57,7 @@ AiEval::agent(SupportAgent::class)
 You can configure one judge for the whole eval chain:
 
 ```php
-AiEval::agent(SupportAgent::class)
+AIEval::agent(SupportAgent::class)
     ->input('What is your refund policy?')
     ->useJudge(App\Ai\Agents\JudgeAgent::class)
     ->expectJudge('The answer should be concise and mention the refund window.', threshold: 0.8)
@@ -78,7 +78,7 @@ You can still override the default in config or pass one per expectation as show
 `EvalResult` supports `dump()` and `dd()` in `text` and `json` formats:
 
 ```php
-$result = AiEval::agent(SupportAgent::class)
+$result = AIEval::agent(SupportAgent::class)
     ->input('What is your refund policy?')
     ->expectContains(['refund'])
     ->run();
@@ -92,6 +92,13 @@ Verbose mode and default output format are configurable:
 ```env
 AI_EVAL_VERBOSE=true
 AI_EVAL_FORMAT=text
+```
+
+Optional retry settings help reduce flaky failures from transient provider issues:
+
+```env
+AI_EVAL_RETRIES=1
+AI_EVAL_RETRY_SLEEP_MS=250
 ```
 
 Run summaries (passed / failed / token usage / cost) are also configurable:
@@ -120,7 +127,7 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ### Security
 
-If you discover any security related issues, please email test@test.com instead of using the issue tracker.
+If you discover any security related issues, please email larswiegers@live.nl instead of using the issue tracker.
 
 ## Credits
 

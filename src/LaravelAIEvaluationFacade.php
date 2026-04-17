@@ -5,7 +5,7 @@ namespace LaravelAIEvaluation\LaravelAIEvaluation;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Test\Test\Skeleton\SkeletonClass
+ * @see \LaravelAIEvaluation\LaravelAIEvaluation\LaravelAIEvaluation
  */
 class LaravelAIEvaluationFacade extends Facade
 {

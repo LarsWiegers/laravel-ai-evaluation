@@ -22,7 +22,7 @@ export default defineConfig({
         text: 'Expectations',
         items: [
           { text: 'Overview', link: '/expectations' },
-          { text: 'Determenistic expectations', link: '/determenistic-expectations' },
+          { text: 'Deterministic expectations', link: '/deterministic-expectations' },
           { text: 'LLM-as-judge expectations', link: '/llm-as-judge-expectations' },
         ],
       },
@@ -55,7 +55,7 @@ export default defineConfig({
         text: 'Expectations',
         items: [
           { text: 'Overview', link: '/expectations' },
-          { text: 'Determenistic expectations', link: '/determenistic-expectations' },
+          { text: 'Deterministic expectations', link: '/deterministic-expectations' },
           { text: 'LLM-as-judge expectations', link: '/llm-as-judge-expectations' },
         ],
       },

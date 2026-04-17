@@ -33,6 +33,13 @@ AI_EVAL_VERBOSE=true
 AI_EVAL_FORMAT=json
 ```
 
+For transient provider/network issues, you can add lightweight retries:
+
+```env
+AI_EVAL_RETRIES=1
+AI_EVAL_RETRY_SLEEP_MS=250
+```
+
 Supported formats are `text` and `json`.
 
 The standalone command also enables end-of-run summaries by default in the spawned Pest process.

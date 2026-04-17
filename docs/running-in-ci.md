@@ -34,6 +34,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_EVAL_FORMAT: json
+          AI_EVAL_RETRIES: 1
+          AI_EVAL_RETRY_SLEEP_MS: 250
           AI_EVAL_SUMMARY: true
           AI_EVAL_SUMMARY_FORMAT: json
           AI_EVAL_SUMMARY_CURRENCY: USD

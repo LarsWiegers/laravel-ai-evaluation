@@ -17,11 +17,16 @@ class EvalRunner
         protected ContainsScorer $containsScorer = new ContainsScorer,
         protected ExactScorer $exactScorer = new ExactScorer,
         protected ?JudgeScorer $judgeScorer = null,
+        protected ?int $retries = null,
+        protected ?int $retrySleepMs = null,
     ) {
         $this->judgeScorer = $this->judgeScorer ?? new JudgeScorer(
             new PromptJudgeClient,
             (float) config('laravel-ai-evaluation.judge.threshold', 0.7),
         );
+
+        $this->retries = $this->retries ?? max(0, (int) config('laravel-ai-evaluation.retries', 0));
+        $this->retrySleepMs = $this->retrySleepMs ?? max(0, (int) config('laravel-ai-evaluation.retry_sleep_ms', 0));
     }
 
     /**
@@ -47,19 +52,7 @@ class EvalRunner
             throw new RuntimeException("AI eval '{$caseId}' agent must implement a prompt method.");
         }
 
-        try {
-            $response = $resolvedAgent->prompt($input);
-        } catch (Throwable $exception) {
-            if ($this->isAuthenticationFailure($exception)) {
-                throw new RuntimeException(
-                    "AI eval '{$caseId}' failed: Authentication error. Check your AI provider API key is configured.",
-                    0,
-                    $exception,
-                );
-            }
-
-            throw $exception;
-        }
+        $response = $this->promptAgent($resolvedAgent, $input, $caseId);
 
         $usage = $this->extractUsage($response);
         $output = $this->stringifyResponse($response);
@@ -101,13 +94,10 @@ class EvalRunner
         }
 
         foreach ($judgeExpectations as $judgeExpectation) {
-            $result = $this->judgeScorer->score(
+            $result = $this->scoreJudgeExpectation(
                 input: $input,
-                actualOutput: $output,
-                criteria: $judgeExpectation['criteria'],
-                reference: $judgeExpectation['reference'],
-                threshold: $judgeExpectation['threshold'],
-                judge: $judgeExpectation['judge'] ?? null,
+                output: $output,
+                judgeExpectation: $judgeExpectation,
             );
 
             $expectationResults[] = [
@@ -151,6 +141,70 @@ class EvalRunner
         }
 
         return str_contains(strtolower($exception->getMessage()), '401');
+    }
+
+    protected function promptAgent(object $agent, string $input, string $caseId): mixed
+    {
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $agent->prompt($input);
+            } catch (Throwable $exception) {
+                if ($this->isAuthenticationFailure($exception)) {
+                    throw new RuntimeException(
+                        "AI eval '{$caseId}' failed: Authentication error. Check your AI provider API key is configured.",
+                        0,
+                        $exception,
+                    );
+                }
+
+                if ($attempt >= $this->retries) {
+                    throw $exception;
+                }
+
+                $attempt++;
+                $this->sleepBeforeRetry();
+            }
+        }
+    }
+
+    /**
+     * @param  array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}  $judgeExpectation
+     * @return array{score: float, threshold: float, passed: bool, reason: string, usage: array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}}
+     */
+    protected function scoreJudgeExpectation(string $input, string $output, array $judgeExpectation): array
+    {
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $this->judgeScorer->score(
+                    input: $input,
+                    actualOutput: $output,
+                    criteria: $judgeExpectation['criteria'],
+                    reference: $judgeExpectation['reference'],
+                    threshold: $judgeExpectation['threshold'],
+                    judge: $judgeExpectation['judge'] ?? null,
+                );
+            } catch (Throwable $exception) {
+                if ($attempt >= $this->retries) {
+                    throw $exception;
+                }
+
+                $attempt++;
+                $this->sleepBeforeRetry();
+            }
+        }
+    }
+
+    protected function sleepBeforeRetry(): void
+    {
+        if ($this->retrySleepMs <= 0) {
+            return;
+        }
+
+        usleep($this->retrySleepMs * 1000);
     }
 
     protected function stringifyResponse(mixed $response): string

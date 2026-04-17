@@ -48,10 +48,7 @@
         "laravel": {
             "providers": [
                 "LaravelAIEvaluation\\LaravelAIEvaluation\\LaravelAIEvaluationServiceProvider"
-            ],
-            "aliases": {
-                "Test": "LaravelAIEvaluation\\Tests"
-            }
+            ]
         }
     }
 }
