@@ -38,4 +38,13 @@ pest()->extend(Tests\TestCase::class)->in('Feature', 'AgentEvals');
 vendor/bin/pest
 ```
 
-When an eval fails, the test fails immediately because `assertPasses()` throws.
+When an eval fails, the test fails with a PHPUnit assertion message from `assertPasses()`.
+
+## Optional: verbose output during Pest runs
+
+```env
+AI_EVAL_VERBOSE=true
+AI_EVAL_FORMAT=text
+```
+
+`AI_EVAL_FORMAT` supports `text` and `json`.
