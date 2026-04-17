@@ -38,9 +38,7 @@ class DefaultJudgeAgent
         $anonymousAgentClass = 'Laravel\\Ai\\AnonymousAgent';
 
         if (class_exists($anonymousAgentClass)) {
-            $agent = new $anonymousAgentClass(
-                instructions: $this->judgeInstructions(),
-            );
+            $agent = $this->makeAnonymousAgent($anonymousAgentClass);
 
             if (! method_exists($agent, 'prompt')) {
                 throw new RuntimeException('Laravel AI AnonymousAgent must implement a prompt method.');
@@ -71,6 +69,52 @@ class DefaultJudgeAgent
             'return new class { use \\Laravel\\Ai\\Promptable; public function instructions(): string { return %s; } };',
             var_export($this->judgeInstructions(), true),
         )));
+    }
+
+    protected function makeAnonymousAgent(string $anonymousAgentClass): object
+    {
+        $reflection = new \ReflectionClass($anonymousAgentClass);
+        $constructor = $reflection->getConstructor();
+
+        if ($constructor === null) {
+            return $reflection->newInstance();
+        }
+
+        $arguments = [];
+
+        foreach ($constructor->getParameters() as $parameter) {
+            $name = $parameter->getName();
+
+            if ($name === 'instructions') {
+                $arguments[] = $this->judgeInstructions();
+
+                continue;
+            }
+
+            if ($name === 'messages' || $name === 'tools') {
+                $arguments[] = [];
+
+                continue;
+            }
+
+            if ($parameter->isDefaultValueAvailable()) {
+                $arguments[] = $parameter->getDefaultValue();
+
+                continue;
+            }
+
+            if ($parameter->allowsNull()) {
+                $arguments[] = null;
+
+                continue;
+            }
+
+            throw new RuntimeException(
+                sprintf('Unable to instantiate Laravel AI AnonymousAgent: unsupported required constructor parameter "%s".', $name)
+            );
+        }
+
+        return $reflection->newInstanceArgs($arguments);
     }
 
     protected function judgeInstructions(): string
