@@ -28,9 +28,28 @@ class DefaultJudgeAgent
             }
         }
 
-        throw new RuntimeException(
-            'Unable to run the default judge agent. Install and configure Laravel AI, or pass a custom judge to expectJudge/expectJudgeAgainst.'
+        $response = $this->promptWithLaravelAiSdk($prompt);
+
+        return $this->stringifyResponse($response);
+    }
+
+    protected function promptWithLaravelAiSdk(string $prompt): mixed
+    {
+        $anonymousAgentClass = 'Laravel\\Ai\\AnonymousAgent';
+        $agent = new $anonymousAgentClass(
+            instructions: $this->judgeInstructions(),
         );
+
+        if (! method_exists($agent, 'prompt')) {
+            throw new RuntimeException('Laravel AI AnonymousAgent must implement a prompt method.');
+        }
+
+        return $agent->prompt($prompt);
+    }
+
+    protected function judgeInstructions(): string
+    {
+        return 'You are an evaluation judge. Respond only with JSON containing "score" (0.0-1.0) and "reason".';
     }
 
     protected function stringifyResponse(mixed $response): string
