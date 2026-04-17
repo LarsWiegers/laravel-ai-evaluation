@@ -18,6 +18,8 @@ features:
     details: Evaluate actual AI behavior, not mocked responses.
   - title: Pest native
     details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
+  - title: Output control
+    details: Use text or JSON output with verbose mode and run summaries.
   - title: CI ready
     details: Evals hard-fail when expectations are not met.
 ---

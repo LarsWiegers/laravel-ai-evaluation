@@ -33,6 +33,10 @@ jobs:
       - name: Run AI evals
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_EVAL_FORMAT: json
+          AI_EVAL_SUMMARY: true
+          AI_EVAL_SUMMARY_FORMAT: json
+          AI_EVAL_SUMMARY_CURRENCY: USD
         run: php artisan ai-evals:run
 ```
 
@@ -47,3 +51,4 @@ php artisan ai-evals:run --filter="refund"
 - The command exits non-zero on failure, so CI will fail automatically.
 - Keep API keys in CI secrets, never in the repository.
 - Start with a small `tests/AgentEvals` suite and expand gradually.
+- `AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` both support `text` and `json`.

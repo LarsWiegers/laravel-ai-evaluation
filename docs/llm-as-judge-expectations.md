@@ -7,6 +7,7 @@ Use judge expectations when semantic quality matters more than exact text matchi
 The package ships with a default judge agent: `DefaultJudgeAgent`.
 
 If Laravel AI is available, it is used automatically so you can start without creating a custom judge.
+The default judge supports Laravel AI SDK variants that expose either `AnonymousAgent` or only `Promptable`.
 
 ## Configure a custom judge agent (optional)
 
@@ -24,6 +25,24 @@ return [
 The judge agent must expose a `prompt(string $prompt)` method.
 
 You can also pass a judge directly per expectation.
+
+## Configure one judge for multiple expectations
+
+Use `useJudge()` to avoid passing the same judge repeatedly:
+
+```php
+LaravelAIEvaluation::agent(SupportAgent::class)
+    ->input('What is your refund policy?')
+    ->useJudge(App\Ai\Agents\JudgeAgent::class)
+    ->expectJudge('The answer should be clear and policy accurate.', threshold: 0.8)
+    ->expectJudgeAgainst(
+        reference: 'Refunds are available within 30 days of purchase.',
+        criteria: 'The answer should match the policy and mention the timeframe.',
+        threshold: 0.8,
+    )
+    ->run()
+    ->assertPasses();
+```
 
 ## `expectJudgeAgainst`
 

@@ -54,8 +54,53 @@ AiEval::agent(SupportAgent::class)
     ->assertPasses();
 ```
 
+You can configure one judge for the whole eval chain:
+
+```php
+AiEval::agent(SupportAgent::class)
+    ->input('What is your refund policy?')
+    ->useJudge(App\Ai\Agents\JudgeAgent::class)
+    ->expectJudge('The answer should be concise and mention the refund window.', threshold: 0.8)
+    ->expectJudgeAgainst(
+        reference: 'Refunds are available within 30 days of purchase.',
+        criteria: 'The answer should be correct and complete.',
+        threshold: 0.8,
+    )
+    ->run()
+    ->assertPasses();
+```
+
 The package includes a default judge agent, so you can start immediately if Laravel AI is available.
 You can still override the default in config or pass one per expectation as shown above.
+
+### Debug output and formats
+
+`EvalResult` supports `dump()` and `dd()` in `text` and `json` formats:
+
+```php
+$result = AiEval::agent(SupportAgent::class)
+    ->input('What is your refund policy?')
+    ->expectContains(['refund'])
+    ->run();
+
+$result->dump(); // text
+$result->dump(format: 'json'); // JSON line
+```
+
+Verbose mode and default output format are configurable:
+
+```env
+AI_EVAL_VERBOSE=true
+AI_EVAL_FORMAT=text
+```
+
+Run summaries (passed / failed / token usage / cost) are also configurable:
+
+```env
+AI_EVAL_SUMMARY=true
+AI_EVAL_SUMMARY_FORMAT=json
+AI_EVAL_SUMMARY_CURRENCY=USD
+```
 
 Recommended location for these eval tests is `tests/AgentEvals`.
 

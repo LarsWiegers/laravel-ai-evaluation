@@ -23,7 +23,17 @@ class PestProcessRunner
             $command[] = "--filter={$filter}";
         }
 
-        $process = new Process($command, base_path());
+        $env = [];
+
+        if (getenv('AI_EVAL_SUMMARY') === false) {
+            $env['AI_EVAL_SUMMARY'] = '1';
+        }
+
+        if (getenv('AI_EVAL_SUMMARY_FORMAT') === false) {
+            $env['AI_EVAL_SUMMARY_FORMAT'] = (string) config('laravel-ai-evaluation.format', 'text');
+        }
+
+        $process = new Process($command, base_path(), $env);
         $process->setTimeout(null);
         $process->run(function (string $type, string $buffer) use ($output): void {
             $output($buffer);
