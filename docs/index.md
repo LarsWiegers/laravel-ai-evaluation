@@ -18,8 +18,8 @@ features:
     details: Evaluate actual AI behavior, not mocked responses.
   - title: Pest native
     details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
-  - title: Framework agnostic standalone
-    details: Run eval files via `php artisan ai-evals:run` without a test runner dependency.
+  - title: Standalone Artisan runner
+    details: Run eval files via `php artisan ai-evals:run` without Pest or PHPUnit.
   - title: Output control
     details: Use text or JSON output with verbose mode and run summaries.
   - title: CI ready

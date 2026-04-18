@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation\Judge;
 
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use RuntimeException;
 
 class DefaultJudgeAgent
 {
+    public function __construct(
+        protected ?ResponseNormalizer $responseNormalizer = null,
+    ) {
+        $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
+    }
+
     public function prompt(string $prompt): string
     {
         $aiFacade = 'Illuminate\\Support\\Facades\\AI';
@@ -15,12 +22,12 @@ class DefaultJudgeAgent
         if (class_exists($aiFacade) && method_exists($aiFacade, 'prompt')) {
             $response = call_user_func([$aiFacade, 'prompt'], $prompt);
 
-            return $this->stringifyResponse($response);
+            return $this->responseNormalizer->stringifyResponse($response, 'default judge');
         }
 
         $response = $this->promptWithLaravelAiSdk($prompt);
 
-        return $this->stringifyResponse($response);
+        return $this->responseNormalizer->stringifyResponse($response, 'default judge');
     }
 
     protected function promptWithLaravelAiSdk(string $prompt): mixed
@@ -123,24 +130,4 @@ class DefaultJudgeAgent
         return 'You are an evaluation judge. Respond only with JSON containing "score" (0.0-1.0) and "reason".';
     }
 
-    protected function stringifyResponse(mixed $response): string
-    {
-        if (is_string($response)) {
-            return $response;
-        }
-
-        if (is_scalar($response)) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && method_exists($response, '__toString')) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && property_exists($response, 'text') && is_string($response->text)) {
-            return $response->text;
-        }
-
-        throw new RuntimeException('Unable to convert default judge response to string output.');
-    }
 }

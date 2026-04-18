@@ -10,6 +10,12 @@ use LaravelAIEvaluation\Console\RunAgentEvalsCommand;
 use LaravelAIEvaluation\Console\StandaloneEvalRunner;
 use LaravelAIEvaluation\Evaluation\EvalRunner;
 use LaravelAIEvaluation\Evaluation\EvalRunSummary;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
+use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 
 class LaravelAIEvaluationServiceProvider extends ServiceProvider
 {
@@ -42,8 +48,27 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
             return new PestProcessRunner;
         });
 
+        $this->app->bind(JudgeClient::class, PromptJudgeClient::class);
+
+        $this->app->singleton(ResponseNormalizer::class, function () {
+            return new ResponseNormalizer;
+        });
+
+        $this->app->singleton(JudgeScorer::class, function () {
+            return new JudgeScorer(
+                $this->app->make(JudgeClient::class),
+                (float) config('laravel-ai-evaluation.judge.threshold', 0.7),
+            );
+        });
+
         $this->app->singleton(EvalRunner::class, function () {
-            return new EvalRunner;
+            return new EvalRunner(
+                containsScorer: $this->app->make(ContainsScorer::class),
+                exactScorer: $this->app->make(ExactScorer::class),
+                judgeScorer: $this->app->make(JudgeScorer::class),
+                runSummary: $this->app->make(EvalRunSummary::class),
+                responseNormalizer: $this->app->make(ResponseNormalizer::class),
+            );
         });
 
         $this->app->singleton(EvalRunSummary::class, function () {

@@ -8,6 +8,7 @@ use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use RuntimeException;
 use Throwable;
@@ -19,6 +20,7 @@ class EvalRunner
         protected ExactScorer $exactScorer = new ExactScorer,
         protected ?JudgeScorer $judgeScorer = null,
         protected ?EvalRunSummary $runSummary = null,
+        protected ?ResponseNormalizer $responseNormalizer = null,
         protected ?int $retries = null,
         protected ?int $retrySleepMs = null,
     ) {
@@ -30,6 +32,7 @@ class EvalRunner
         $this->retries = $this->retries ?? max(0, (int) config('laravel-ai-evaluation.retries', 0));
         $this->retrySleepMs = $this->retrySleepMs ?? max(0, (int) config('laravel-ai-evaluation.retry_sleep_ms', 0));
         $this->runSummary = $this->runSummary ?? (function_exists('app') ? app(EvalRunSummary::class) : new EvalRunSummary);
+        $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
     }
 
     /**
@@ -59,8 +62,8 @@ class EvalRunner
 
         $response = $this->promptAgent($resolvedAgent, $input, $name);
 
-        $usage = $this->extractUsage($response);
-        $output = $this->stringifyResponse($response);
+        $usage = $this->responseNormalizer->extractUsage($response);
+        $output = $this->responseNormalizer->stringifyResponse($response, 'AI agent');
 
         $failures = [];
         $expectationResults = [];
@@ -252,78 +255,6 @@ class EvalRunner
         }
 
         return false;
-    }
-
-    protected function stringifyResponse(mixed $response): string
-    {
-        if (is_string($response)) {
-            return $response;
-        }
-
-        if (is_scalar($response)) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && method_exists($response, '__toString')) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && property_exists($response, 'text') && is_string($response->text)) {
-            return $response->text;
-        }
-
-        throw new RuntimeException('Unable to convert AI response to string output for evaluation.');
-    }
-
-    /**
-     * @return array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}
-     */
-    protected function extractUsage(mixed $response): array
-    {
-        $source = null;
-
-        if (is_array($response) && isset($response['usage']) && is_array($response['usage'])) {
-            $source = $response['usage'];
-        }
-
-        if (is_object($response) && isset($response->usage)) {
-            if (is_array($response->usage)) {
-                $source = $response->usage;
-            }
-
-            if (is_object($response->usage)) {
-                $source = get_object_vars($response->usage);
-            }
-        }
-
-        if (! is_array($source)) {
-            return [];
-        }
-
-        $prompt = $source['prompt_tokens'] ?? $source['input_tokens'] ?? null;
-        $completion = $source['completion_tokens'] ?? $source['output_tokens'] ?? null;
-        $total = $source['total_tokens'] ?? null;
-        $cost = $source['cost'] ?? $source['total_cost'] ?? null;
-
-        $usage = [];
-
-        if (is_numeric($prompt)) {
-            $usage['prompt_tokens'] = (int) $prompt;
-        }
-
-        if (is_numeric($completion)) {
-            $usage['completion_tokens'] = (int) $completion;
-        }
-
-        if (is_numeric($total)) {
-            $usage['total_tokens'] = (int) $total;
-        }
-
-        if (is_numeric($cost)) {
-            $usage['cost'] = (float) $cost;
-        }
-
-        return $usage;
     }
 
     /**

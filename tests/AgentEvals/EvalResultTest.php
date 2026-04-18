@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use LaravelAIEvaluation\Evaluation\EvalResult;
-use PHPUnit\Framework\AssertionFailedError;
 
 it('assertPasses returns self when eval passes', function () {
     $result = new EvalResult(
@@ -17,7 +16,7 @@ it('assertPasses returns self when eval passes', function () {
     expect($result->assertPasses())->toBe($result);
 });
 
-it('assertPasses fails with phpunit assertion failure', function () {
+it('assertPasses throws runtime exception when eval fails', function () {
     $result = new EvalResult(
         name: 'failing-case',
         input: 'hello',
@@ -27,7 +26,7 @@ it('assertPasses fails with phpunit assertion failure', function () {
     );
 
     $result->assertPasses();
-})->throws(AssertionFailedError::class, "AI eval 'failing-case' failed.");
+})->throws(RuntimeException::class, "AI eval 'failing-case' failed.");
 
 it('dump includes judge score threshold and reason', function () {
     $result = new EvalResult(

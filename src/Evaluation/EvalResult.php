@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation;
 
-use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 class EvalResult
@@ -65,17 +64,16 @@ class EvalResult
 
     public function assertPasses(): self
     {
-        Assert::assertTrue(
-            $this->passed(),
-            sprintf(
+        if (! $this->passed()) {
+            throw new RuntimeException(sprintf(
                 "AI eval '%s' failed.\nLocation: %s\nInput: %s\nOutput: %s\nFailures:\n- %s",
                 $this->name,
                 $this->location ?? 'unknown',
                 $this->input,
                 $this->output,
                 implode("\n- ", $this->failures),
-            ),
-        );
+            ));
+        }
 
         return $this;
     }
