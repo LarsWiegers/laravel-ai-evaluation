@@ -16,7 +16,7 @@ Why:
 
 ### Before releases
 
-Run the full `tests/AgentEvals` suite before deployments.
+Run the full eval suite before deployments (for example `tests/AgentEvals`).
 
 Why:
 
@@ -35,7 +35,7 @@ Why:
 ## Suggested cadence
 
 - Small local run while developing: `php artisan ai-evals:run --filter="..."`
-- Full suite on PR and on merge to `master`
+- Full suite on PR and on merge to `main`
 - Optional scheduled nightly run for broader confidence
 
 ## Cases where evals are especially valuable

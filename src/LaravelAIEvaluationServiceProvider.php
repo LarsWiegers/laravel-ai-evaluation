@@ -7,6 +7,8 @@ namespace LaravelAIEvaluation;
 use Illuminate\Support\ServiceProvider;
 use LaravelAIEvaluation\Console\PestProcessRunner;
 use LaravelAIEvaluation\Console\RunAgentEvalsCommand;
+use LaravelAIEvaluation\Console\StandaloneEvalRunner;
+use LaravelAIEvaluation\Evaluation\EvalRunner;
 use LaravelAIEvaluation\Evaluation\EvalRunSummary;
 
 class LaravelAIEvaluationServiceProvider extends ServiceProvider
@@ -16,7 +18,7 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/config.php' => config_path('laravel-ai-evaluation.php'),
-            ], 'config');
+            ], 'laravel-ai-evaluation-config');
 
             $this->commands([
                 RunAgentEvalsCommand::class,
@@ -32,8 +34,16 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
             return new LaravelAIEvaluation;
         });
 
-        $this->app->singleton(PestProcessRunner::class, function () {
-            return new PestProcessRunner;
+        $this->app->singleton(StandaloneEvalRunner::class, function () {
+            return new StandaloneEvalRunner;
+        });
+
+        $this->app->singleton(PestProcessRunner::class, function ($app) {
+            return $app->make(StandaloneEvalRunner::class);
+        });
+
+        $this->app->singleton(EvalRunner::class, function () {
+            return new EvalRunner;
         });
 
         $this->app->singleton(EvalRunSummary::class, function () {

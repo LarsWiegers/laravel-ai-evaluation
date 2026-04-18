@@ -22,6 +22,5 @@ return [
 
     'standalone' => [
         'path' => 'tests/AgentEvals',
-        'binary' => 'vendor/bin/pest',
     ],
 ];

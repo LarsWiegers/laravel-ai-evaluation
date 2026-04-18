@@ -7,7 +7,7 @@ use PHPUnit\Framework\AssertionFailedError;
 
 it('passes contains expectation using agent class string', function () {
     $result = LaravelAIEvaluation::agent(FakeSupportAgent::class)
-        ->case('refund-policy')
+        ->name('refund-policy')
         ->input('What is your refund policy?')
         ->expectContains(['refund', '30 days'])
         ->run();
@@ -17,7 +17,7 @@ it('passes contains expectation using agent class string', function () {
 
 it('passes exact expectation using agent instance', function () {
     $result = LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
-        ->case('healthcheck')
+        ->name('healthcheck')
         ->input('Reply with exactly: OK')
         ->expectExact('OK')
         ->run();
@@ -27,21 +27,21 @@ it('passes exact expectation using agent instance', function () {
 
 it('throws when expectations fail', function () {
     LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
-        ->case('failing-case')
+        ->name('failing-case')
         ->input('Reply with exactly: NOT_OK')
         ->expectExact('NOT_OK')
         ->run()
         ->assertPasses();
 })->throws(AssertionFailedError::class);
 
-it('uses pest test name when case is omitted', function () {
+it('uses pest test name when name is omitted', function () {
     $result = LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
         ->input('Reply with exactly: WRONG')
         ->expectExact('WRONG')
         ->run();
 
     expect(fn () => $result->assertPasses())
-        ->toThrow(AssertionFailedError::class, "AI eval 'it uses pest test name when case is omitted' failed");
+        ->toThrow(AssertionFailedError::class, "AI eval 'it uses pest test name when name is omitted' failed");
 });
 
 class FakeSupportAgent

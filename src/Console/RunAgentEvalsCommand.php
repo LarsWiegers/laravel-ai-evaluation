@@ -10,12 +10,12 @@ use Throwable;
 class RunAgentEvalsCommand extends Command
 {
     protected $signature = 'ai-evals:run
-        {path? : Relative path to eval tests}
-        {--filter= : Filter eval tests by name}';
+        {path? : Relative path to standalone eval files}
+        {--filter= : Filter eval cases by name}';
 
-    protected $description = 'Run AI agent eval tests without the full suite';
+    protected $description = 'Run standalone AI evals without a test framework';
 
-    public function handle(PestProcessRunner $runner): int
+    public function handle(StandaloneEvalRunner $runner): int
     {
         $path = (string) ($this->argument('path') ?: config('laravel-ai-evaluation.standalone.path', 'tests/AgentEvals'));
         $filter = $this->option('filter');

@@ -13,7 +13,7 @@ it('prints text summary with pass fail and token totals', function () {
     config()->set('laravel-ai-evaluation.summary.currency', 'USD');
 
     $summary->record(new EvalResult(
-        caseId: 'one',
+        name: 'one',
         input: 'a',
         output: 'b',
         failures: [],
@@ -22,7 +22,7 @@ it('prints text summary with pass fail and token totals', function () {
     ));
 
     $summary->record(new EvalResult(
-        caseId: 'two',
+        name: 'two',
         input: 'a',
         output: 'b',
         failures: ['failed'],
@@ -55,7 +55,7 @@ it('prints json summary when configured', function () {
     config()->set('laravel-ai-evaluation.summary.currency', 'EUR');
 
     $summary->record(new EvalResult(
-        caseId: 'one',
+        name: 'one',
         input: 'a',
         output: 'b',
         failures: [],
@@ -76,6 +76,35 @@ it('prints json summary when configured', function () {
     expect($payload['total'])->toBe(1);
     expect($payload['total_tokens'])->toBe(3);
     expect($payload['currency'])->toBe('EUR');
+
+    $summary->resetForTests();
+    config()->set('laravel-ai-evaluation.summary.enabled', false);
+});
+
+it('flushes summary output only once per recorded dataset', function () {
+    $summary = app(EvalRunSummary::class);
+    $summary->resetForTests();
+    config()->set('laravel-ai-evaluation.summary.enabled', true);
+    config()->set('laravel-ai-evaluation.summary.format', 'text');
+
+    $summary->record(new EvalResult(
+        name: 'single',
+        input: 'a',
+        output: 'b',
+        failures: [],
+        expectationResults: [],
+    ));
+
+    $lines = [];
+    $summary->flush(function (string $line) use (&$lines): void {
+        $lines[] = $line;
+    });
+
+    $summary->flush(function (string $line) use (&$lines): void {
+        $lines[] = $line;
+    });
+
+    expect($lines)->toHaveCount(8);
 
     $summary->resetForTests();
     config()->set('laravel-ai-evaluation.summary.enabled', false);

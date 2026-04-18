@@ -16,7 +16,7 @@ use LaravelAIEvaluation\AIEval;
 
 it('returns refund policy details', function () {
     AIEval::agent(SupportAgent::class)
-        ->case('refund-policy')
+        ->name('refund-policy')
         ->input('What is your refund policy?')
         ->expectContains(['refund', '30 days'])
         ->run()

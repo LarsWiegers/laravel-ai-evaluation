@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation;
 
+use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
+
 class EvalCaseBuilder
 {
     /**
@@ -18,7 +20,7 @@ class EvalCaseBuilder
      */
     protected array $judgeExpectations = [];
 
-    protected ?string $caseId = null;
+    protected ?string $name = null;
 
     protected string $input = '';
 
@@ -30,12 +32,12 @@ class EvalCaseBuilder
         protected object|string $agent,
         protected ?EvalRunner $runner = null,
     ) {
-        $this->runner = $this->runner ?? new EvalRunner;
+        $this->runner = $this->runner ?? (function_exists('app') ? app(EvalRunner::class) : new EvalRunner);
     }
 
-    public function case(string $caseId): self
+    public function name(string $name): self
     {
-        $this->caseId = $caseId;
+        $this->name = $name;
 
         return $this;
     }
@@ -101,7 +103,7 @@ class EvalCaseBuilder
     {
         return $this->runner->run(
             agent: $this->agent,
-            caseId: $this->resolveCaseId(),
+            name: $this->resolveName(),
             input: $this->input,
             contains: $this->contains,
             exact: $this->exact,
@@ -124,10 +126,10 @@ class EvalCaseBuilder
         return $this;
     }
 
-    protected function resolveCaseId(): string
+    protected function resolveName(): string
     {
-        if ($this->caseId !== null && $this->caseId !== '') {
-            return $this->caseId;
+        if ($this->name !== null && $this->name !== '') {
+            return $this->name;
         }
 
         foreach (debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 50) as $frame) {
@@ -158,7 +160,13 @@ class EvalCaseBuilder
             }
         }
 
-        return 'unnamed-case';
+        $standaloneName = StandaloneEvalContext::currentName();
+
+        if ($standaloneName !== null) {
+            return $standaloneName;
+        }
+
+        return 'unnamed-eval';
     }
 
     protected function resolveLocation(): ?string

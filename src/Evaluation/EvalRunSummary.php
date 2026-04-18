@@ -8,6 +8,8 @@ class EvalRunSummary
 {
     protected bool $shutdownRegistered = false;
 
+    protected bool $flushed = false;
+
     protected bool $enabled = false;
 
     protected string $format = 'text';
@@ -51,13 +53,15 @@ class EvalRunSummary
         $this->usageTotals['completion_tokens'] += (int) ($usage['completion_tokens'] ?? 0);
         $this->usageTotals['total_tokens'] += (int) ($usage['total_tokens'] ?? 0);
         $this->usageTotals['cost'] += (float) ($usage['cost'] ?? 0.0);
+
+        $this->flushed = false;
     }
 
     public function flush(?callable $writer = null): void
     {
         $this->boot();
 
-        if (! $this->enabled || $this->total === 0) {
+        if (! $this->enabled || $this->total === 0 || $this->flushed) {
             return;
         }
 
@@ -72,6 +76,8 @@ class EvalRunSummary
                 $writer($payload);
             }
 
+            $this->flushed = true;
+
             return;
         }
 
@@ -83,6 +89,8 @@ class EvalRunSummary
         $writer(sprintf('Completion tokens: %d', $this->usageTotals['completion_tokens']));
         $writer(sprintf('Total tokens: %d', $this->usageTotals['total_tokens']));
         $writer(sprintf('Estimated cost: %s %.6f', $this->currency, $this->usageTotals['cost']));
+
+        $this->flushed = true;
     }
 
     /**
@@ -117,6 +125,7 @@ class EvalRunSummary
             'total_tokens' => 0,
             'cost' => 0.0,
         ];
+        $this->flushed = false;
     }
 
     protected function boot(): void

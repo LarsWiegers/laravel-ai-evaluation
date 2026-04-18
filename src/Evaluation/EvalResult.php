@@ -14,7 +14,7 @@ class EvalResult
      * @param  array<int, array<string, mixed>>  $expectationResults
      */
     public function __construct(
-        protected string $caseId,
+        protected string $name,
         protected string $input,
         protected string $output,
         protected array $failures,
@@ -69,7 +69,7 @@ class EvalResult
             $this->passed(),
             sprintf(
                 "AI eval '%s' failed.\nLocation: %s\nInput: %s\nOutput: %s\nFailures:\n- %s",
-                $this->caseId,
+                $this->name,
                 $this->location ?? 'unknown',
                 $this->input,
                 $this->output,
@@ -102,7 +102,7 @@ class EvalResult
             return $this;
         }
 
-        $writer(sprintf("Eval case: %s", $this->caseId));
+        $writer(sprintf('Eval name: %s', $this->name));
         $writer(sprintf('Location: %s', $this->location ?? 'unknown'));
         $writer(sprintf('Passed: %s', $this->passed() ? 'yes' : 'no'));
         $writer(sprintf('Input: %s', $this->input));
@@ -133,7 +133,7 @@ class EvalResult
     public function toArray(): array
     {
         return [
-            'case' => $this->caseId,
+            'name' => $this->name,
             'location' => $this->location,
             'passed' => $this->passed(),
             'input' => $this->input,

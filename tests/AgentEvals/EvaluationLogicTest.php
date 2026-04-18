@@ -9,6 +9,7 @@ use LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 
 it('contains scorer returns missing substrings', function () {
     $scorer = new ContainsScorer;
@@ -86,7 +87,7 @@ it('builder combines contains expectations from string and array', function () {
     });
 
     $result = $builder
-        ->case('contains-combine')
+        ->name('contains-combine')
         ->input('ignored')
         ->expectContains('alpha')
         ->expectContains(['beta', 'gamma'])
@@ -104,12 +105,33 @@ it('builder captures test file location on result', function () {
     });
 
     $result = $builder
-        ->case('captures-location')
+        ->name('captures-location')
         ->input('ignored')
         ->expectContains('alpha')
         ->run();
 
     expect($result->location())->toContain('tests/AgentEvals/EvaluationLogicTest.php');
+});
+
+it('uses standalone suite name when explicit name is omitted', function () {
+    $runner = new EvalRunner;
+    $agent = new class {
+        public function prompt(string $prompt): string
+        {
+            return 'alpha beta gamma';
+        }
+    };
+
+    $result = StandaloneEvalContext::withName('suite-name-eval', function () use ($runner, $agent) {
+        return $runner->run(
+            agent: $agent,
+            name: null,
+            input: 'ignored',
+            contains: ['alpha'],
+        );
+    });
+
+    expect($result->toArray()['name'])->toBe('suite-name-eval');
 });
 
 it('builder supports explicit location override', function () {
@@ -121,7 +143,7 @@ it('builder supports explicit location override', function () {
     });
 
     $result = $builder
-        ->case('explicit-location')
+        ->name('explicit-location')
         ->location('tests/AgentEvals/ExplicitLocationTest.php:12')
         ->input('ignored')
         ->expectContains('alpha')
@@ -173,7 +195,7 @@ it('passes judge expectation when score meets threshold', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'judge-pass',
+        name: 'judge-pass',
         input: 'What is your refund policy?',
         judgeExpectations: [[
             'criteria' => 'The answer should match policy and mention a clear time window.',
@@ -209,7 +231,7 @@ it('fails judge expectation when score is below threshold', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'judge-fail',
+        name: 'judge-fail',
         input: 'What is your refund policy?',
         judgeExpectations: [[
             'criteria' => 'Answer must include exact refund window and conditions.',
@@ -339,7 +361,7 @@ it('wraps 401 prompt failures with api key guidance', function () {
 
     $runner->run(
         agent: $agent,
-        caseId: 'auth-error',
+        name: 'auth-error',
         input: 'Hello',
         contains: ['ignored'],
     );
@@ -364,7 +386,7 @@ it('retries transient agent prompt failures when configured', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'retry-agent',
+        name: 'retry-agent',
         input: 'Hello',
         contains: ['retry succeeded'],
     );
@@ -389,7 +411,7 @@ it('does not retry non transient agent failures', function () {
     expect(function () use ($runner, $agent): void {
         $runner->run(
             agent: $agent,
-            caseId: 'no-retry-agent',
+            name: 'no-retry-agent',
             input: 'Hello',
             contains: ['retry succeeded'],
         );
@@ -432,7 +454,7 @@ it('retries transient judge failures when configured', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'retry-judge',
+        name: 'retry-judge',
         input: 'What is your refund policy?',
         judgeExpectations: [[
             'criteria' => 'Answer should mention refund window.',

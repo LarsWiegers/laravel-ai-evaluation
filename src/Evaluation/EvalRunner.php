@@ -8,6 +8,7 @@ use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use RuntimeException;
 use Throwable;
 
@@ -37,24 +38,26 @@ class EvalRunner
      */
     public function run(
         object|string $agent,
-        string $caseId,
+        ?string $name,
         string $input,
         array $contains = [],
         ?string $exact = null,
         array $judgeExpectations = [],
         ?string $location = null,
     ): EvalResult {
+        $name = $this->resolveName($name);
+
         if ($contains === [] && $exact === null && $judgeExpectations === []) {
-            throw new RuntimeException("AI eval '{$caseId}' must define at least one expectation.");
+            throw new RuntimeException("AI eval '{$name}' must define at least one expectation.");
         }
 
         $resolvedAgent = is_string($agent) ? app()->make($agent) : $agent;
 
         if (! method_exists($resolvedAgent, 'prompt')) {
-            throw new RuntimeException("AI eval '{$caseId}' agent must implement a prompt method.");
+            throw new RuntimeException("AI eval '{$name}' agent must implement a prompt method.");
         }
 
-        $response = $this->promptAgent($resolvedAgent, $input, $caseId);
+        $response = $this->promptAgent($resolvedAgent, $input, $name);
 
         $usage = $this->extractUsage($response);
         $output = $this->stringifyResponse($response);
@@ -125,7 +128,7 @@ class EvalRunner
             }
         }
 
-        $result = new EvalResult($caseId, $input, $output, $failures, $expectationResults, $location, $usage);
+        $result = new EvalResult($name, $input, $output, $failures, $expectationResults, $location, $usage);
 
         $this->runSummary->record($result);
 
@@ -134,6 +137,21 @@ class EvalRunner
         }
 
         return $result;
+    }
+
+    protected function resolveName(?string $name): string
+    {
+        if (is_string($name) && trim($name) !== '') {
+            return $name;
+        }
+
+        $standaloneName = StandaloneEvalContext::currentName();
+
+        if ($standaloneName !== null) {
+            return $standaloneName;
+        }
+
+        return 'unnamed-eval';
     }
 
     protected function isAuthenticationFailure(Throwable $exception): bool
@@ -145,7 +163,7 @@ class EvalRunner
         return str_contains(strtolower($exception->getMessage()), '401');
     }
 
-    protected function promptAgent(object $agent, string $input, string $caseId): mixed
+    protected function promptAgent(object $agent, string $input, string $name): mixed
     {
         $attempt = 0;
 
@@ -155,7 +173,7 @@ class EvalRunner
             } catch (Throwable $exception) {
                 if ($this->isAuthenticationFailure($exception)) {
                     throw new RuntimeException(
-                        "AI eval '{$caseId}' failed: Authentication error. Check your AI provider API key is configured.",
+                        "AI eval '{$name}' failed: Authentication error. Check your AI provider API key is configured.",
                         0,
                         $exception,
                     );

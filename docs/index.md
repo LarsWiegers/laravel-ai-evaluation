@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Laravel AI Evaluation
   text: Real-call LLM evals for Laravel AI
-  tagline: Validate model output quality in Pest tests and fail CI when behavior regresses.
+  tagline: Validate model output quality in Laravel with Pest or standalone eval files.
   actions:
     - theme: brand
       text: Run in Pest
@@ -18,6 +18,8 @@ features:
     details: Evaluate actual AI behavior, not mocked responses.
   - title: Pest native
     details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
+  - title: Framework agnostic standalone
+    details: Run eval files via `php artisan ai-evals:run` without a test runner dependency.
   - title: Output control
     details: Use text or JSON output with verbose mode and run summaries.
   - title: CI ready
@@ -46,15 +48,19 @@ No additional setup is required.
 
 :::
 
-### 3) Create a test
+### 3) Create an eval
 
-Create `tests/AgentEvals/SupportAgentEvalTest.php`:
+::: code-group
 
-```bash
+```bash [Pest]
 mkdir -p tests/AgentEvals && touch tests/AgentEvals/SupportAgentEvalTest.php
 ```
 
-```php
+```bash [Standalone]
+mkdir -p tests/AgentEvals && touch tests/AgentEvals/SupportAgent.eval.php
+```
+
+```php [Pest]
 <?php
 
 declare(strict_types=1);
@@ -70,6 +76,27 @@ it('returns refund policy details', function () {
         ->assertPasses();
 });
 ```
+
+```php [Standalone]
+<?php
+
+declare(strict_types=1);
+
+use App\Ai\Agents\SupportAgent;
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('returns refund policy details', static function () {
+        return AIEval::agent(SupportAgent::class)
+            ->input('What is your refund policy?')
+            ->expectContains(['refund', '30 days'])
+            ->run();
+    });
+};
+```
+
+:::
 
 ### 4) Run
 

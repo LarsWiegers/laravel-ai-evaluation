@@ -7,7 +7,7 @@ use PHPUnit\Framework\AssertionFailedError;
 
 it('assertPasses returns self when eval passes', function () {
     $result = new EvalResult(
-        caseId: 'passing-case',
+        name: 'passing-case',
         input: 'hello',
         output: 'world',
         failures: [],
@@ -19,7 +19,7 @@ it('assertPasses returns self when eval passes', function () {
 
 it('assertPasses fails with phpunit assertion failure', function () {
     $result = new EvalResult(
-        caseId: 'failing-case',
+        name: 'failing-case',
         input: 'hello',
         output: 'world',
         failures: ['Missing expected token'],
@@ -31,7 +31,7 @@ it('assertPasses fails with phpunit assertion failure', function () {
 
 it('dump includes judge score threshold and reason', function () {
     $result = new EvalResult(
-        caseId: 'judge-case',
+        name: 'judge-case',
         input: 'question',
         output: 'answer',
         failures: [],
@@ -54,7 +54,7 @@ it('dump includes judge score threshold and reason', function () {
 
 it('dump includes location when available', function () {
     $result = new EvalResult(
-        caseId: 'location-case',
+        name: 'location-case',
         input: 'question',
         output: 'answer',
         failures: [],
@@ -72,7 +72,7 @@ it('dump includes location when available', function () {
 
 it('dump supports json output format', function () {
     $result = new EvalResult(
-        caseId: 'json-case',
+        name: 'json-case',
         input: 'question',
         output: 'answer',
         failures: [],
@@ -90,14 +90,14 @@ it('dump supports json output format', function () {
     $payload = json_decode($lines[0], true);
 
     expect($payload)->toBeArray();
-    expect($payload['case'])->toBe('json-case');
+    expect($payload['name'])->toBe('json-case');
     expect($payload['location'])->toBe('tests/AgentEvals/JsonTest.php:11');
     expect($payload['passed'])->toBeTrue();
 });
 
 it('dump rejects unsupported formats', function () {
     $result = new EvalResult(
-        caseId: 'bad-format',
+        name: 'bad-format',
         input: 'question',
         output: 'answer',
         failures: [],

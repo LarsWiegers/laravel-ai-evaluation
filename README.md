@@ -21,7 +21,7 @@ use App\Ai\Agents\SupportAgent;
 use LaravelAIEvaluation\AIEval;
 
 AIEval::agent(SupportAgent::class)
-    ->case('refund-policy')
+    ->name('refund-policy')
     ->input('What is your refund policy?')
     ->expectContains(['refund', '30 days'])
     ->run()
@@ -32,7 +32,7 @@ You can also assert exact outputs:
 
 ```php
 AIEval::agent(SupportAgent::class)
-    ->case('healthcheck')
+    ->name('healthcheck')
     ->input('Reply with exactly: OK')
     ->expectExact('OK')
     ->run()
@@ -109,7 +109,39 @@ AI_EVAL_SUMMARY_FORMAT=json
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
-Recommended location for these eval tests is `tests/AgentEvals`.
+Recommended location for standalone eval files is `tests/AgentEvals` using `*.eval.php` filenames.
+
+### Standalone runner (no test framework required)
+
+Run evals directly:
+
+```bash
+php artisan ai-evals:run
+```
+
+You can also target a custom path and optional name filter:
+
+```bash
+php artisan ai-evals:run tests/AgentEvals --filter=refund
+```
+
+Create files that return a callable receiving `\LaravelAIEvaluation\Standalone\StandaloneEvalSuite`:
+
+```php
+<?php
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('refund-policy', static function () {
+        return AIEval::agent(App\Ai\Agents\SupportAgent::class)
+            ->input('What is your refund policy?')
+            ->expectContains(['refund', '30 days'])
+            ->run();
+    });
+};
+```
 
 ### Testing
 
