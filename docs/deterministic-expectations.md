@@ -7,7 +7,9 @@ Deterministic expectations define clear pass/fail checks with no model-judge sco
 Use `expectContains` when output can vary, but must include key facts.
 
 ```php
-LaravelAIEvaluation::agent(SupportAgent::class)
+use LaravelAIEvaluation\AIEval;
+
+AIEval::agent(SupportAgent::class)
     ->input('What is your refund policy?')
     ->expectContains(['refund', '30 days'])
     ->run()
@@ -25,7 +27,9 @@ Behavior:
 Use `expectExact` when output must match exactly.
 
 ```php
-LaravelAIEvaluation::agent(HealthcheckAgent::class)
+use LaravelAIEvaluation\AIEval;
+
+AIEval::agent(HealthcheckAgent::class)
     ->input('Reply with exactly: OK')
     ->expectExact('OK')
     ->run()
@@ -43,7 +47,9 @@ Behavior:
 You can use both expectations in one eval.
 
 ```php
-LaravelAIEvaluation::agent(SupportAgent::class)
+use LaravelAIEvaluation\AIEval;
+
+AIEval::agent(SupportAgent::class)
     ->input('Summarize refund terms in one sentence')
     ->expectContains('refund')
     ->expectExact('Refunds are available within 30 days of purchase.')

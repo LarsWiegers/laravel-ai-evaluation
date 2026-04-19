@@ -26,7 +26,7 @@ it('assertPasses throws runtime exception when eval fails', function () {
     );
 
     $result->assertPasses();
-})->throws(RuntimeException::class, "AI eval 'failing-case' failed.");
+})->throws(PHPUnit\Framework\ExpectationFailedException::class, "AI eval 'failing-case' failed.");
 
 it('dump includes judge score threshold and reason', function () {
     $result = new EvalResult(

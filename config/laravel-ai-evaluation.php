@@ -1,8 +1,5 @@
 <?php
 
-/*
- * You can place your custom package configuration in here.
- */
 return [
     'verbose' => env('AI_EVAL_VERBOSE', false),
     'format' => env('AI_EVAL_FORMAT', 'text'),

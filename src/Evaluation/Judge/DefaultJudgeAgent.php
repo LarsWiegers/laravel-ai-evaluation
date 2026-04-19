@@ -25,42 +25,19 @@ class DefaultJudgeAgent
             return $this->responseNormalizer->stringifyResponse($response, 'default judge');
         }
 
-        $response = $this->promptWithLaravelAiSdk($prompt);
+        $response = $this->createPromptableJudgeAgent()->prompt($prompt);
 
         return $this->responseNormalizer->stringifyResponse($response, 'default judge');
     }
 
-    protected function promptWithLaravelAiSdk(string $prompt): mixed
-    {
-        $anonymousAgentClass = 'Laravel\\Ai\\AnonymousAgent';
-
-        if (class_exists($anonymousAgentClass)) {
-            $agent = $this->makeAnonymousAgent($anonymousAgentClass);
-
-            if (! method_exists($agent, 'prompt')) {
-                throw new RuntimeException('Laravel AI AnonymousAgent must implement a prompt method.');
-            }
-
-            return $agent->prompt($prompt);
-        }
-
-        if (trait_exists('Laravel\\Ai\\Promptable')) {
-            $agent = $this->createPromptableJudgeAgent();
-
-            if (! method_exists($agent, 'prompt')) {
-                throw new RuntimeException('Laravel AI Promptable fallback must implement a prompt method.');
-            }
-
-            return $agent->prompt($prompt);
-        }
-
-        throw new RuntimeException(
-            'Unable to run the default judge agent. Laravel AI SDK classes were not found. Ensure laravel/ai is installed and configured.'
-        );
-    }
-
     protected function createPromptableJudgeAgent(): object
     {
+        if (! trait_exists('Laravel\\Ai\\Promptable')) {
+            throw new RuntimeException(
+                'Unable to run the default judge agent. Laravel AI Promptable trait was not found. Ensure laravel/ai is installed and configured.'
+            );
+        }
+
         $instructions = $this->judgeInstructions();
 
         return new class($instructions)
@@ -77,52 +54,6 @@ class DefaultJudgeAgent
                 return $this->instructions;
             }
         };
-    }
-
-    protected function makeAnonymousAgent(string $anonymousAgentClass): object
-    {
-        $reflection = new \ReflectionClass($anonymousAgentClass);
-        $constructor = $reflection->getConstructor();
-
-        if ($constructor === null) {
-            return $reflection->newInstance();
-        }
-
-        $arguments = [];
-
-        foreach ($constructor->getParameters() as $parameter) {
-            $name = $parameter->getName();
-
-            if ($name === 'instructions') {
-                $arguments[] = $this->judgeInstructions();
-
-                continue;
-            }
-
-            if ($name === 'messages' || $name === 'tools') {
-                $arguments[] = [];
-
-                continue;
-            }
-
-            if ($parameter->isDefaultValueAvailable()) {
-                $arguments[] = $parameter->getDefaultValue();
-
-                continue;
-            }
-
-            if ($parameter->allowsNull()) {
-                $arguments[] = null;
-
-                continue;
-            }
-
-            throw new RuntimeException(
-                sprintf('Unable to instantiate Laravel AI AnonymousAgent: unsupported required constructor parameter "%s".', $name)
-            );
-        }
-
-        return $reflection->newInstanceArgs($arguments);
     }
 
     protected function judgeInstructions(): string

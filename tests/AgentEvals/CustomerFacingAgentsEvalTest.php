@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation;
+use LaravelAIEvaluation\AIEval;
 use Tests\Fixtures\Agents\AppointmentBookingAgent;
 use Tests\Fixtures\Agents\BillingInvoiceAgent;
 use Tests\Fixtures\Agents\CustomerSupportAgent;
@@ -72,13 +72,13 @@ it('evaluates customer-facing agents built for Laravel teams', function (string 
         $this->markTestSkipped('Live AI evals require at least one configured provider API key.');
     }
 
-    $result = LaravelAIEvaluation::agent($agentClass)
+    $result = AIEval::agent($agentClass)
         ->input($prompt)
         ->expectContains($expectations)
         ->run();
 
     expect($result->passed())->toBeTrue();
-})->with('customer-facing-agents');
+})->with('customer-facing-agents')->group('live-ai');
 
 function liveAiCredentialsConfigured(): bool
 {

@@ -65,14 +65,20 @@ class EvalResult
     public function assertPasses(): self
     {
         if (! $this->passed()) {
-            throw new RuntimeException(sprintf(
+            $message = sprintf(
                 "AI eval '%s' failed.\nLocation: %s\nInput: %s\nOutput: %s\nFailures:\n- %s",
                 $this->name,
                 $this->location ?? 'unknown',
                 $this->input,
                 $this->output,
                 implode("\n- ", $this->failures),
-            ));
+            );
+
+            if (class_exists('PHPUnit\\Framework\\ExpectationFailedException')) {
+                throw new \PHPUnit\Framework\ExpectationFailedException($message);
+            }
+
+            throw new RuntimeException($message);
         }
 
         return $this;

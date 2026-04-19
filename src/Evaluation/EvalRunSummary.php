@@ -134,12 +134,25 @@ class EvalRunSummary
         $this->format = (string) config('laravel-ai-evaluation.summary.format', 'text');
         $this->currency = strtoupper((string) config('laravel-ai-evaluation.summary.currency', 'USD'));
 
-        if (! $this->shutdownRegistered) {
+        if ($this->enabled && ! $this->shutdownRegistered && ! $this->runningUnitTests()) {
             register_shutdown_function(function (): void {
                 $this->flush();
             });
 
             $this->shutdownRegistered = true;
+        }
+    }
+
+    protected function runningUnitTests(): bool
+    {
+        if (! function_exists('app')) {
+            return false;
+        }
+
+        try {
+            return app()->runningUnitTests();
+        } catch (\Throwable) {
+            return false;
         }
     }
 }

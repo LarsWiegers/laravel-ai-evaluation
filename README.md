@@ -14,6 +14,18 @@ You can install the package via composer:
 composer require larswiegers/laravel-ai-evaluation
 ```
 
+Install the package defaults (publish config + ensure `tests/AgentEvals` exists):
+
+```bash
+php artisan ai-evals:install
+```
+
+You can also publish only the config file manually:
+
+```bash
+php artisan vendor:publish --tag=laravel-ai-evaluation-config
+```
+
 ## Usage
 
 ```php
@@ -27,6 +39,8 @@ AIEval::agent(SupportAgent::class)
     ->run()
     ->assertPasses();
 ```
+
+Use `LaravelAIEvaluation\AIEval` as the primary entrypoint. No facade alias is required.
 
 You can also assert exact outputs:
 
@@ -110,6 +124,24 @@ AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
 Recommended location for standalone eval files is `tests/AgentEvals` using `*.eval.php` filenames.
+This default path is configurable via `laravel-ai-evaluation.standalone.path`.
+
+### Generate an eval file
+
+Use the make command to scaffold either a Pest test or a standalone eval file:
+
+```bash
+php artisan ai-evals:make refund-policy --type=pest
+php artisan ai-evals:make refund-policy --type=standalone
+php artisan ai-evals:make refund-policy --type=pest --agent="App\\Ai\\Agents\\BillingAgent"
+```
+
+You can customize the output directory and overwrite existing files:
+
+```bash
+php artisan ai-evals:make refund-policy --type=pest --path=tests/AgentEvals/Billing
+php artisan ai-evals:make refund-policy --type=standalone --force
+```
 
 ### Standalone runner (no test framework required)
 
@@ -145,13 +177,21 @@ return static function (StandaloneEvalSuite $suite): void {
 
 ### Testing
 
+Run the deterministic package test suite (live AI evals excluded):
+
 ```bash
 composer test
 ```
 
+Run live AI evals only (requires provider credentials like `OPENAI_API_KEY`):
+
+```bash
+composer test-live
+```
+
 ### Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
+Please see [CHANGELOG](CHANGELOG.md) for a list of recent changes.
 
 ## Contributing
 

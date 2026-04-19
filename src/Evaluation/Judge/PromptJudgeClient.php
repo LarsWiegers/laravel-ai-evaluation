@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation\Judge;
 
+use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
 use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use RuntimeException;
 
@@ -11,8 +12,10 @@ class PromptJudgeClient implements JudgeClient
 {
     public function __construct(
         protected ?ResponseNormalizer $responseNormalizer = null,
+        protected ?PromptingTargetResolver $targetResolver = null,
     ) {
         $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
+        $this->targetResolver = $this->targetResolver ?? new PromptingTargetResolver;
     }
 
     public function evaluate(
@@ -28,11 +31,7 @@ class PromptJudgeClient implements JudgeClient
             throw new RuntimeException('Judge agent is not configured. Set laravel-ai-evaluation.judge.agent first.');
         }
 
-        $resolvedJudgeAgent = is_string($judgeAgent) ? app()->make($judgeAgent) : $judgeAgent;
-
-        if (! method_exists($resolvedJudgeAgent, 'prompt')) {
-            throw new RuntimeException('Configured judge agent must implement a prompt method.');
-        }
+        $resolvedJudgeAgent = $this->targetResolver->resolve($judgeAgent, 'judge agent');
 
         $judgePrompt = $this->buildJudgePrompt($input, $actualOutput, $criteria, $reference);
         $response = $resolvedJudgeAgent->prompt($judgePrompt);

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation;
+use LaravelAIEvaluation\AIEval;
 
 it('passes contains expectation using agent class string', function () {
-    $result = LaravelAIEvaluation::agent(FakeSupportAgent::class)
+    $result = AIEval::agent(FakeSupportAgent::class)
         ->name('refund-policy')
         ->input('What is your refund policy?')
         ->expectContains(['refund', '30 days'])
@@ -15,7 +15,7 @@ it('passes contains expectation using agent class string', function () {
 });
 
 it('passes exact expectation using agent instance', function () {
-    $result = LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
+    $result = AIEval::agent(new FakeHealthcheckAgent)
         ->name('healthcheck')
         ->input('Reply with exactly: OK')
         ->expectExact('OK')
@@ -25,22 +25,22 @@ it('passes exact expectation using agent instance', function () {
 });
 
 it('throws when expectations fail', function () {
-    LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
+    AIEval::agent(new FakeHealthcheckAgent)
         ->name('failing-case')
         ->input('Reply with exactly: NOT_OK')
         ->expectExact('NOT_OK')
         ->run()
         ->assertPasses();
-})->throws(RuntimeException::class);
+})->throws(PHPUnit\Framework\ExpectationFailedException::class);
 
 it('uses pest test name when name is omitted', function () {
-    $result = LaravelAIEvaluation::agent(new FakeHealthcheckAgent)
+    $result = AIEval::agent(new FakeHealthcheckAgent)
         ->input('Reply with exactly: WRONG')
         ->expectExact('WRONG')
         ->run();
 
     expect(fn () => $result->assertPasses())
-        ->toThrow(RuntimeException::class, "AI eval 'it uses pest test name when name is omitted' failed");
+        ->toThrow(PHPUnit\Framework\ExpectationFailedException::class, "AI eval 'it uses pest test name when name is omitted' failed");
 });
 
 class FakeSupportAgent

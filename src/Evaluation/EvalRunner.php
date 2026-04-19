@@ -8,6 +8,7 @@ use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
 use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use RuntimeException;
@@ -21,6 +22,7 @@ class EvalRunner
         protected ?JudgeScorer $judgeScorer = null,
         protected ?EvalRunSummary $runSummary = null,
         protected ?ResponseNormalizer $responseNormalizer = null,
+        protected ?PromptingTargetResolver $targetResolver = null,
         protected ?int $retries = null,
         protected ?int $retrySleepMs = null,
     ) {
@@ -33,6 +35,7 @@ class EvalRunner
         $this->retrySleepMs = $this->retrySleepMs ?? max(0, (int) config('laravel-ai-evaluation.retry_sleep_ms', 0));
         $this->runSummary = $this->runSummary ?? (function_exists('app') ? app(EvalRunSummary::class) : new EvalRunSummary);
         $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
+        $this->targetResolver = $this->targetResolver ?? new PromptingTargetResolver;
     }
 
     /**
@@ -54,11 +57,7 @@ class EvalRunner
             throw new RuntimeException("AI eval '{$name}' must define at least one expectation.");
         }
 
-        $resolvedAgent = is_string($agent) ? app()->make($agent) : $agent;
-
-        if (! method_exists($resolvedAgent, 'prompt')) {
-            throw new RuntimeException("AI eval '{$name}' agent must implement a prompt method.");
-        }
+        $resolvedAgent = $this->targetResolver->resolve($agent, 'agent', $name);
 
         $response = $this->promptAgent($resolvedAgent, $input, $name);
 

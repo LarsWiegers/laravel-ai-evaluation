@@ -41,7 +41,7 @@ it('runner throws when agent has no prompt method', function () {
     $runner = new EvalRunner;
 
     $runner->run(new stdClass, 'invalid-agent', 'input', ['x']);
-})->throws(RuntimeException::class, 'agent must implement a prompt method');
+})->throws(RuntimeException::class, 'must implement Laravel\\Ai\\Contracts\\Agent or expose a prompt(string $prompt) method');
 
 it('runner supports stringable object responses', function () {
     $runner = new EvalRunner;

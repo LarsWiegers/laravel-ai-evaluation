@@ -48,55 +48,21 @@ No additional setup is required.
 
 :::
 
-### 3) Create an eval
+### 3) Generate an eval file
 
 ::: code-group
 
 ```bash [Pest]
-mkdir -p tests/AgentEvals && touch tests/AgentEvals/SupportAgentEvalTest.php
+php artisan ai-evals:make refund-policy --type=pest
 ```
 
 ```bash [Standalone]
-mkdir -p tests/AgentEvals && touch tests/AgentEvals/SupportAgent.eval.php
-```
-
-```php [Pest]
-<?php
-
-declare(strict_types=1);
-
-use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\AIEval;
-
-it('returns refund policy details', function () {
-    AIEval::agent(SupportAgent::class)
-        ->input('What is your refund policy?')
-        ->expectContains(['refund', '30 days'])
-        ->run()
-        ->assertPasses();
-});
-```
-
-```php [Standalone]
-<?php
-
-declare(strict_types=1);
-
-use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\AIEval;
-use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
-
-return static function (StandaloneEvalSuite $suite): void {
-    $suite->eval('returns refund policy details', static function () {
-        return AIEval::agent(SupportAgent::class)
-            ->input('What is your refund policy?')
-            ->expectContains(['refund', '30 days'])
-            ->run();
-    });
-};
+php artisan ai-evals:make refund-policy --type=standalone
 ```
 
 :::
+
+The command scaffolds a starter file you can edit for your agent and expectations.
 
 ### 4) Run
 
@@ -114,7 +80,9 @@ php artisan ai-evals:run
 
 ## Learn More
 
+- [Installation](./installation)
 - [When to run evals](./when-to-run-evals)
+- [Create eval files](./creating-evals)
 - [Expectations overview](./expectations)
 - [Deterministic expectations](./deterministic-expectations)
 - [LLM-as-judge expectations](./llm-as-judge-expectations)

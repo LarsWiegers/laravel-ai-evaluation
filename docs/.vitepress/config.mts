@@ -29,6 +29,8 @@ export default defineConfig({
       {
         text: 'Guides',
         items: [
+          { text: 'Installation', link: '/installation' },
+          { text: 'Create eval files', link: '/creating-evals' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },
         ],
@@ -38,7 +40,8 @@ export default defineConfig({
       {
         text: 'Getting Started',
         items: [
-          { text: 'Overview', link: '/' },
+          { text: 'Installation', link: '/installation' },
+          { text: 'Create eval files', link: '/creating-evals' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },
         ],
