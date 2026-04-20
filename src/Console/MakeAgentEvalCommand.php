@@ -36,9 +36,17 @@ class MakeAgentEvalCommand extends Command
             return self::FAILURE;
         }
 
-        $slug = Str::slug($name);
+        $evalName = $this->resolveEvalName($name);
 
-        if ($slug === '') {
+        if ($evalName === null) {
+            $this->components->error('Eval name must contain at least one letter or number.');
+
+            return self::FAILURE;
+        }
+
+        $fileStem = $this->resolveFileStem($name);
+
+        if ($fileStem === null) {
             $this->components->error('Eval name must contain at least one letter or number.');
 
             return self::FAILURE;
@@ -59,8 +67,8 @@ class MakeAgentEvalCommand extends Command
         }
 
         $fileName = $type === 'pest'
-            ? sprintf('%sEvalTest.php', Str::studly($slug))
-            : sprintf('%s.eval.php', $slug);
+            ? sprintf('%sEvalTest.php', Str::studly($fileStem))
+            : sprintf('%s.eval.php', $fileStem);
 
         $targetPath = $directory.'/'.$fileName;
 
@@ -72,7 +80,7 @@ class MakeAgentEvalCommand extends Command
 
         $agentClass = $this->resolveAgentClass();
 
-        $written = $this->files->put($targetPath, $this->buildTemplate($type, $slug, $agentClass));
+        $written = $this->files->put($targetPath, $this->buildTemplate($type, $evalName, $agentClass));
 
         if ($written === false) {
             $this->components->error(sprintf('Unable to write eval file [%s].', $this->relativeToBasePath($targetPath)));
@@ -104,8 +112,10 @@ class MakeAgentEvalCommand extends Command
         return in_array($type, ['pest', 'standalone'], true) ? $type : null;
     }
 
-    protected function buildTemplate(string $type, string $slug, string $agentClass): string
+    protected function buildTemplate(string $type, string $evalName, string $agentClass): string
     {
+        $escapedEvalName = str_replace(['\\', "'"], ['\\\\', "\\'"], $evalName);
+
         if ($type === 'pest') {
             return <<<PHP
 <?php
@@ -114,7 +124,7 @@ declare(strict_types=1);
 
 use LaravelAIEvaluation\AIEval;
 
-it('{$slug}', function () {
+it('{$escapedEvalName}', function () {
     AIEval::agent({$agentClass}::class)
         ->input('What is your refund policy?')
         ->expectContains(['refund', '30 days'])
@@ -133,7 +143,7 @@ use LaravelAIEvaluation\AIEval;
 use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
 
 return static function (StandaloneEvalSuite \$suite): void {
-    \$suite->eval('{$slug}', static function () {
+    \$suite->eval('{$escapedEvalName}', static function () {
         return AIEval::agent({$agentClass}::class)
             ->input('What is your refund policy?')
             ->expectContains(['refund', '30 days'])
@@ -159,9 +169,68 @@ PHP;
         $agent = $this->option('agent');
 
         if (! is_string($agent) || trim($agent) === '') {
-            return 'App\\Ai\\Agents\\SupportAgent';
+            if ($this->shouldPromptForAgent()) {
+                $agent = $this->ask('Agent class to scaffold', 'App\\Ai\\Agents\\SupportAgent');
+            }
+
+            if (! is_string($agent) || trim($agent) === '') {
+                return 'App\\Ai\\Agents\\SupportAgent';
+            }
         }
 
         return ltrim(trim($agent), '\\');
+    }
+
+    protected function shouldPromptForAgent(): bool
+    {
+        if (! isset($this->input) || ! $this->input->isInteractive()) {
+            return false;
+        }
+
+        if (! function_exists('app')) {
+            return true;
+        }
+
+        try {
+            return ! app()->runningUnitTests();
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    protected function resolveEvalName(string $name): ?string
+    {
+        $trimmed = trim($name);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $sanitized = preg_replace('/\s+/', ' ', $trimmed);
+
+        if (! is_string($sanitized) || preg_match('/[A-Za-z0-9]/', $sanitized) !== 1) {
+            return null;
+        }
+
+        return $sanitized;
+    }
+
+    protected function resolveFileStem(string $name): ?string
+    {
+        $trimmed = trim($name);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $stem = preg_replace('/[^A-Za-z0-9_-]+/', '-', $trimmed);
+
+        if (! is_string($stem)) {
+            return null;
+        }
+
+        $stem = trim($stem, '-_');
+
+        return $stem === '' ? null : $stem;
     }
 }

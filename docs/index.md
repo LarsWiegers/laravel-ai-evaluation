@@ -31,7 +31,7 @@ features:
 ### 1) Install
 
 ```bash
-composer require larswiegers/laravel-ai-evaluation
+composer require --dev larswiegers/laravel-ai-evaluation
 ```
 
 ### 2) Configure your run mode
