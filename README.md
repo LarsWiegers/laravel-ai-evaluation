@@ -11,7 +11,7 @@ Laravel AI Evaluation helps you run LLM output evaluations directly in your test
 You can install the package via composer:
 
 ```bash
-composer require larswiegers/laravel-ai-evaluation
+composer require --dev larswiegers/laravel-ai-evaluation
 ```
 
 Install the package defaults (publish config + ensure `tests/AgentEvals` exists):

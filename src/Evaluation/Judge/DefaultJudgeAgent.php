@@ -40,6 +40,23 @@ class DefaultJudgeAgent
 
         $instructions = $this->judgeInstructions();
 
+        if (interface_exists('Laravel\\Ai\\Contracts\\Agent')) {
+            return new class($instructions) implements \Laravel\Ai\Contracts\Agent
+            {
+                use \Laravel\Ai\Promptable;
+
+                public function __construct(
+                    protected string $instructions,
+                ) {
+                }
+
+                public function instructions(): string
+                {
+                    return $this->instructions;
+                }
+            };
+        }
+
         return new class($instructions)
         {
             use \Laravel\Ai\Promptable;

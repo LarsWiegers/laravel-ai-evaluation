@@ -126,6 +126,49 @@ PHP,
     expect(implode('', $lines))->toContain('No standalone eval names matched the provided filter.');
 });
 
+it('prints failed contains output and colorized status labels', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    file_put_contents(
+        base_path("{$path}/fails.eval.php"),
+        <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('contains-fail', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'Agent says hello world';
+            }
+        })
+            ->input('ignored')
+            ->expectContains('refund')
+            ->run();
+    });
+};
+PHP,
+    );
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    });
+
+    $output = implode('', $lines);
+
+    expect($exitCode)->toBe(1);
+    expect($output)->toContain('<fg=red;options=bold>FAIL contains-fail</>');
+    expect($output)->toContain('Returned output:');
+    expect($output)->toContain('Agent says hello world');
+});
+
 function createStandaloneEvalDirectory(): string
 {
     static $registered = false;

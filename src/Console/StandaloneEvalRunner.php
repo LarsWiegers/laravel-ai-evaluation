@@ -49,20 +49,25 @@ class StandaloneEvalRunner
 
                     if ($result->passed()) {
                         $summary['passed']++;
-                        $output(sprintf("PASS %s\n", $name));
+                        $output(sprintf("<fg=green;options=bold>PASS %s</>\n", $name));
 
                         continue;
                     }
 
                     $summary['failed']++;
-                    $output(sprintf("FAIL %s\n", $name));
+                    $output(sprintf("<fg=red;options=bold>FAIL %s</>\n", $name));
 
                     foreach ($result->failures() as $failure) {
                         $output(sprintf("  - %s\n", $failure));
                     }
+
+                    if ($this->hasContainsExpectationFailure($result)) {
+                        $output("  Returned output:\n");
+                        $output(sprintf("    %s\n", $this->formatOutputBlock($result->output())));
+                    }
                 } catch (Throwable $exception) {
                     $summary['failed']++;
-                    $output(sprintf("ERROR %s\n", $name));
+                    $output(sprintf("<fg=red;options=bold>ERROR %s</>\n", $name));
                     $output(sprintf("  - %s\n", $exception->getMessage()));
                 }
             }
@@ -144,5 +149,31 @@ class StandaloneEvalRunner
         }
 
         return str_contains(strtolower($name), strtolower($filter));
+    }
+
+    protected function hasContainsExpectationFailure(EvalResult $result): bool
+    {
+        foreach ($result->expectationResults() as $expectationResult) {
+            if (($expectationResult['type'] ?? null) !== 'contains') {
+                continue;
+            }
+
+            if (($expectationResult['passed'] ?? false) === false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function formatOutputBlock(string $output): string
+    {
+        $normalized = trim($output);
+
+        if ($normalized === '') {
+            return '(empty)';
+        }
+
+        return str_replace("\n", "\n    ", $normalized);
     }
 }
