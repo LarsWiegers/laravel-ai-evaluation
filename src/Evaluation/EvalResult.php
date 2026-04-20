@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation;
+namespace LaravelAIEvaluation\Evaluation;
 
-use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 class EvalResult
@@ -14,7 +13,7 @@ class EvalResult
      * @param  array<int, array<string, mixed>>  $expectationResults
      */
     public function __construct(
-        protected string $caseId,
+        protected string $name,
         protected string $input,
         protected string $output,
         protected array $failures,
@@ -65,17 +64,22 @@ class EvalResult
 
     public function assertPasses(): self
     {
-        Assert::assertTrue(
-            $this->passed(),
-            sprintf(
+        if (! $this->passed()) {
+            $message = sprintf(
                 "AI eval '%s' failed.\nLocation: %s\nInput: %s\nOutput: %s\nFailures:\n- %s",
-                $this->caseId,
+                $this->name,
                 $this->location ?? 'unknown',
                 $this->input,
                 $this->output,
                 implode("\n- ", $this->failures),
-            ),
-        );
+            );
+
+            if (class_exists('PHPUnit\\Framework\\ExpectationFailedException')) {
+                throw new \PHPUnit\Framework\ExpectationFailedException($message);
+            }
+
+            throw new RuntimeException($message);
+        }
 
         return $this;
     }
@@ -102,7 +106,7 @@ class EvalResult
             return $this;
         }
 
-        $writer(sprintf("Eval case: %s", $this->caseId));
+        $writer(sprintf('Eval name: %s', $this->name));
         $writer(sprintf('Location: %s', $this->location ?? 'unknown'));
         $writer(sprintf('Passed: %s', $this->passed() ? 'yes' : 'no'));
         $writer(sprintf('Input: %s', $this->input));
@@ -133,7 +137,7 @@ class EvalResult
     public function toArray(): array
     {
         return [
-            'case' => $this->caseId,
+            'name' => $this->name,
             'location' => $this->location,
             'passed' => $this->passed(),
             'input' => $this->input,

@@ -2,64 +2,66 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation;
+namespace LaravelAIEvaluation\Evaluation;
 
 class EvalRunSummary
 {
-    protected static bool $booted = false;
+    protected bool $shutdownRegistered = false;
 
-    protected static bool $shutdownRegistered = false;
+    protected bool $flushed = false;
 
-    protected static bool $enabled = false;
+    protected bool $enabled = false;
 
-    protected static string $format = 'text';
+    protected string $format = 'text';
 
-    protected static string $currency = 'USD';
+    protected string $currency = 'USD';
 
-    protected static int $total = 0;
+    protected int $total = 0;
 
-    protected static int $passed = 0;
+    protected int $passed = 0;
 
-    protected static int $failed = 0;
+    protected int $failed = 0;
 
     /**
      * @var array{prompt_tokens: int, completion_tokens: int, total_tokens: int, cost: float}
      */
-    protected static array $usageTotals = [
+    protected array $usageTotals = [
         'prompt_tokens' => 0,
         'completion_tokens' => 0,
         'total_tokens' => 0,
         'cost' => 0.0,
     ];
 
-    public static function record(EvalResult $result): void
+    public function record(EvalResult $result): void
     {
-        self::boot();
+        $this->boot();
 
-        if (! self::$enabled) {
+        if (! $this->enabled) {
             return;
         }
 
-        self::$total++;
+        $this->total++;
 
         if ($result->passed()) {
-            self::$passed++;
+            $this->passed++;
         } else {
-            self::$failed++;
+            $this->failed++;
         }
 
         $usage = $result->usage();
-        self::$usageTotals['prompt_tokens'] += (int) ($usage['prompt_tokens'] ?? 0);
-        self::$usageTotals['completion_tokens'] += (int) ($usage['completion_tokens'] ?? 0);
-        self::$usageTotals['total_tokens'] += (int) ($usage['total_tokens'] ?? 0);
-        self::$usageTotals['cost'] += (float) ($usage['cost'] ?? 0.0);
+        $this->usageTotals['prompt_tokens'] += (int) ($usage['prompt_tokens'] ?? 0);
+        $this->usageTotals['completion_tokens'] += (int) ($usage['completion_tokens'] ?? 0);
+        $this->usageTotals['total_tokens'] += (int) ($usage['total_tokens'] ?? 0);
+        $this->usageTotals['cost'] += (float) ($usage['cost'] ?? 0.0);
+
+        $this->flushed = false;
     }
 
-    public static function flush(?callable $writer = null): void
+    public function flush(?callable $writer = null): void
     {
-        self::boot();
+        $this->boot();
 
-        if (! self::$enabled || self::$total === 0) {
+        if (! $this->enabled || $this->total === 0 || $this->flushed) {
             return;
         }
 
@@ -67,79 +69,90 @@ class EvalRunSummary
             fwrite(STDOUT, $line.PHP_EOL);
         };
 
-        if (self::$format === 'json') {
-            $payload = json_encode(self::toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($this->format === 'json') {
+            $payload = json_encode($this->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             if (is_string($payload)) {
                 $writer($payload);
             }
 
+            $this->flushed = true;
+
             return;
         }
 
         $writer('AI Eval Summary');
-        $writer(sprintf('Total: %d', self::$total));
-        $writer(sprintf('Passed: %d', self::$passed));
-        $writer(sprintf('Failed: %d', self::$failed));
-        $writer(sprintf('Prompt tokens: %d', self::$usageTotals['prompt_tokens']));
-        $writer(sprintf('Completion tokens: %d', self::$usageTotals['completion_tokens']));
-        $writer(sprintf('Total tokens: %d', self::$usageTotals['total_tokens']));
-        $writer(sprintf('Estimated cost: %s %.6f', self::$currency, self::$usageTotals['cost']));
+        $writer(sprintf('Total: %d', $this->total));
+        $writer(sprintf('Passed: %d', $this->passed));
+        $writer(sprintf('Failed: %d', $this->failed));
+        $writer(sprintf('Prompt tokens: %d', $this->usageTotals['prompt_tokens']));
+        $writer(sprintf('Completion tokens: %d', $this->usageTotals['completion_tokens']));
+        $writer(sprintf('Total tokens: %d', $this->usageTotals['total_tokens']));
+        $writer(sprintf('Estimated cost: %s %.6f', $this->currency, $this->usageTotals['cost']));
+
+        $this->flushed = true;
     }
 
     /**
      * @return array<string, int|float|string>
      */
-    public static function toArray(): array
+    public function toArray(): array
     {
         return [
             'type' => 'ai_eval_summary',
-            'total' => self::$total,
-            'passed' => self::$passed,
-            'failed' => self::$failed,
-            'prompt_tokens' => self::$usageTotals['prompt_tokens'],
-            'completion_tokens' => self::$usageTotals['completion_tokens'],
-            'total_tokens' => self::$usageTotals['total_tokens'],
-            'estimated_cost' => round(self::$usageTotals['cost'], 6),
-            'currency' => self::$currency,
+            'total' => $this->total,
+            'passed' => $this->passed,
+            'failed' => $this->failed,
+            'prompt_tokens' => $this->usageTotals['prompt_tokens'],
+            'completion_tokens' => $this->usageTotals['completion_tokens'],
+            'total_tokens' => $this->usageTotals['total_tokens'],
+            'estimated_cost' => round($this->usageTotals['cost'], 6),
+            'currency' => $this->currency,
         ];
     }
 
-    public static function resetForTests(): void
+    public function resetForTests(): void
     {
-        self::$booted = false;
-        self::$enabled = false;
-        self::$format = 'text';
-        self::$currency = 'USD';
-        self::$total = 0;
-        self::$passed = 0;
-        self::$failed = 0;
-        self::$usageTotals = [
+        $this->enabled = false;
+        $this->format = 'text';
+        $this->currency = 'USD';
+        $this->total = 0;
+        $this->passed = 0;
+        $this->failed = 0;
+        $this->usageTotals = [
             'prompt_tokens' => 0,
             'completion_tokens' => 0,
             'total_tokens' => 0,
             'cost' => 0.0,
         ];
+        $this->flushed = false;
     }
 
-    protected static function boot(): void
+    protected function boot(): void
     {
-        if (self::$booted) {
-            return;
-        }
+        $this->enabled = (bool) config('laravel-ai-evaluation.summary.enabled', false);
+        $this->format = (string) config('laravel-ai-evaluation.summary.format', 'text');
+        $this->currency = strtoupper((string) config('laravel-ai-evaluation.summary.currency', 'USD'));
 
-        self::$enabled = (bool) config('laravel-ai-evaluation.summary.enabled', false);
-        self::$format = (string) config('laravel-ai-evaluation.summary.format', 'text');
-        self::$currency = strtoupper((string) config('laravel-ai-evaluation.summary.currency', 'USD'));
-
-        if (! self::$shutdownRegistered) {
-            register_shutdown_function(static function (): void {
-                self::flush();
+        if ($this->enabled && ! $this->shutdownRegistered && ! $this->runningUnitTests()) {
+            register_shutdown_function(function (): void {
+                $this->flush();
             });
 
-            self::$shutdownRegistered = true;
+            $this->shutdownRegistered = true;
+        }
+    }
+
+    protected function runningUnitTests(): bool
+    {
+        if (! function_exists('app')) {
+            return false;
         }
 
-        self::$booted = true;
+        try {
+            return app()->runningUnitTests();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

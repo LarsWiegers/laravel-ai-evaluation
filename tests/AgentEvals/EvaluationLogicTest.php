@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\EvalRunner;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
+use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 
 it('contains scorer returns missing substrings', function () {
     $scorer = new ContainsScorer;
@@ -40,7 +41,7 @@ it('runner throws when agent has no prompt method', function () {
     $runner = new EvalRunner;
 
     $runner->run(new stdClass, 'invalid-agent', 'input', ['x']);
-})->throws(RuntimeException::class, 'agent must implement a prompt method');
+})->throws(RuntimeException::class, 'must implement Laravel\\Ai\\Contracts\\Agent or expose a prompt(string $prompt) method');
 
 it('runner supports stringable object responses', function () {
     $runner = new EvalRunner;
@@ -86,7 +87,7 @@ it('builder combines contains expectations from string and array', function () {
     });
 
     $result = $builder
-        ->case('contains-combine')
+        ->name('contains-combine')
         ->input('ignored')
         ->expectContains('alpha')
         ->expectContains(['beta', 'gamma'])
@@ -104,12 +105,51 @@ it('builder captures test file location on result', function () {
     });
 
     $result = $builder
-        ->case('captures-location')
+        ->name('captures-location')
         ->input('ignored')
         ->expectContains('alpha')
         ->run();
 
     expect($result->location())->toContain('tests/AgentEvals/EvaluationLogicTest.php');
+});
+
+it('uses standalone suite name when explicit name is omitted', function () {
+    $runner = new EvalRunner;
+    $agent = new class {
+        public function prompt(string $prompt): string
+        {
+            return 'alpha beta gamma';
+        }
+    };
+
+    $result = StandaloneEvalContext::withName('suite-name-eval', function () use ($runner, $agent) {
+        return $runner->run(
+            agent: $agent,
+            name: null,
+            input: 'ignored',
+            contains: ['alpha'],
+        );
+    });
+
+    expect($result->toArray()['name'])->toBe('suite-name-eval');
+});
+
+it('builder supports explicit location override', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'alpha beta gamma';
+        }
+    });
+
+    $result = $builder
+        ->name('explicit-location')
+        ->location('tests/AgentEvals/ExplicitLocationTest.php:12')
+        ->input('ignored')
+        ->expectContains('alpha')
+        ->run();
+
+    expect($result->location())->toBe('tests/AgentEvals/ExplicitLocationTest.php:12');
 });
 
 it('result includes both exact and contains failures when both fail', function () {
@@ -155,7 +195,7 @@ it('passes judge expectation when score meets threshold', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'judge-pass',
+        name: 'judge-pass',
         input: 'What is your refund policy?',
         judgeExpectations: [[
             'criteria' => 'The answer should match policy and mention a clear time window.',
@@ -191,7 +231,7 @@ it('fails judge expectation when score is below threshold', function () {
 
     $result = $runner->run(
         agent: $agent,
-        caseId: 'judge-fail',
+        name: 'judge-fail',
         input: 'What is your refund policy?',
         judgeExpectations: [[
             'criteria' => 'Answer must include exact refund window and conditions.',
@@ -321,10 +361,111 @@ it('wraps 401 prompt failures with api key guidance', function () {
 
     $runner->run(
         agent: $agent,
-        caseId: 'auth-error',
+        name: 'auth-error',
         input: 'Hello',
         contains: ['ignored'],
     );
 })->throws(RuntimeException::class, 'Authentication error. Check your AI provider API key is configured.');
+
+it('retries transient agent prompt failures when configured', function () {
+    $runner = new EvalRunner(retries: 1, retrySleepMs: 0);
+    $agent = new class {
+        public int $attempts = 0;
+
+        public function prompt(string $prompt): string
+        {
+            $this->attempts++;
+
+            if ($this->attempts === 1) {
+                throw new RuntimeException('temporary provider timeout');
+            }
+
+            return 'retry succeeded';
+        }
+    };
+
+    $result = $runner->run(
+        agent: $agent,
+        name: 'retry-agent',
+        input: 'Hello',
+        contains: ['retry succeeded'],
+    );
+
+    expect($result->passed())->toBeTrue();
+    expect($agent->attempts)->toBe(2);
+});
+
+it('does not retry non transient agent failures', function () {
+    $runner = new EvalRunner(retries: 3, retrySleepMs: 0);
+    $agent = new class {
+        public int $attempts = 0;
+
+        public function prompt(string $prompt): string
+        {
+            $this->attempts++;
+
+            throw new RuntimeException('Invalid response schema');
+        }
+    };
+
+    expect(function () use ($runner, $agent): void {
+        $runner->run(
+            agent: $agent,
+            name: 'no-retry-agent',
+            input: 'Hello',
+            contains: ['retry succeeded'],
+        );
+    })->toThrow(RuntimeException::class, 'Invalid response schema');
+
+    expect($agent->attempts)->toBe(1);
+});
+
+it('retries transient judge failures when configured', function () {
+    $judgeClient = new class implements JudgeClient {
+        public int $attempts = 0;
+
+        public function evaluate(string $input, string $actualOutput, string $criteria, ?string $reference = null, object|string|null $judge = null): JudgeVerdict
+        {
+            $this->attempts++;
+
+            if ($this->attempts === 1) {
+                throw new RuntimeException('temporary judge timeout');
+            }
+
+            return new JudgeVerdict(0.9, 'Recovered after retry.');
+        }
+    };
+
+    $runner = new EvalRunner(
+        judgeScorer: new JudgeScorer(
+            $judgeClient,
+            0.7,
+        ),
+        retries: 1,
+        retrySleepMs: 0,
+    );
+
+    $agent = new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    };
+
+    $result = $runner->run(
+        agent: $agent,
+        name: 'retry-judge',
+        input: 'What is your refund policy?',
+        judgeExpectations: [[
+            'criteria' => 'Answer should mention refund window.',
+            'reference' => null,
+            'threshold' => 0.8,
+            'judge' => null,
+        ]],
+    );
+
+    expect($result->passed())->toBeTrue();
+    expect($judgeClient->attempts)->toBe(2);
+});
 
 class InlineJudgeAgent {}

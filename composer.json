@@ -2,6 +2,11 @@
     "name": "larswiegers/laravel-ai-evaluation",
     "description": "Run AI/LLM evals for your AI features",
     "keywords": [
+        "laravel",
+        "ai",
+        "llm",
+        "evals",
+        "testing"
     ],
     "homepage": "https://github.com/larswiegers/laravel-ai-evaluation",
     "license": "MIT",
@@ -15,6 +20,7 @@
     ],
     "require": {
         "php": "^8.3|^8.4|^8.5",
+        "illuminate/console": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
         "laravel/ai": "^0.5.0"
     },
@@ -25,7 +31,7 @@
     },
     "autoload": {
         "psr-4": {
-            "LaravelAIEvaluation\\LaravelAIEvaluation\\": "src"
+            "LaravelAIEvaluation\\": "src"
         }
     },
     "autoload-dev": {
@@ -34,7 +40,8 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest",
+        "test": "vendor/bin/pest --exclude-group=live-ai",
+        "test-live": "vendor/bin/pest --group=live-ai",
         "test-coverage": "vendor/bin/pest --coverage-html coverage"
 
     },
@@ -47,11 +54,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "LaravelAIEvaluation\\LaravelAIEvaluation\\LaravelAIEvaluationServiceProvider"
-            ],
-            "aliases": {
-                "Test": "LaravelAIEvaluation\\Tests"
-            }
+                "LaravelAIEvaluation\\LaravelAIEvaluationServiceProvider"
+            ]
         }
     }
 }

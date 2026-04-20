@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\PestProcessRunner;
+use LaravelAIEvaluation\Console\StandaloneEvalRunner;
 
 it('runs standalone eval command with default path', function () {
-    $fakeRunner = new class extends PestProcessRunner {
+    $fakeRunner = new class extends StandaloneEvalRunner {
         public array $calls = [];
 
         public function run(string $path, ?string $filter, callable $output): int
@@ -19,7 +19,7 @@ it('runs standalone eval command with default path', function () {
         }
     };
 
-    app()->instance(PestProcessRunner::class, $fakeRunner);
+    app()->instance(StandaloneEvalRunner::class, $fakeRunner);
 
     $this->artisan('ai-evals:run')
         ->assertExitCode(0);
@@ -30,7 +30,7 @@ it('runs standalone eval command with default path', function () {
 });
 
 it('passes path and filter options to standalone eval command', function () {
-    $fakeRunner = new class extends PestProcessRunner {
+    $fakeRunner = new class extends StandaloneEvalRunner {
         public array $calls = [];
 
         public function run(string $path, ?string $filter, callable $output): int
@@ -44,7 +44,7 @@ it('passes path and filter options to standalone eval command', function () {
         }
     };
 
-    app()->instance(PestProcessRunner::class, $fakeRunner);
+    app()->instance(StandaloneEvalRunner::class, $fakeRunner);
 
     $this->artisan('ai-evals:run', [
         'path' => 'custom/path',

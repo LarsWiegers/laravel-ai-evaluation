@@ -1,68 +1,84 @@
 <?php
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation;
+declare(strict_types=1);
+
+namespace LaravelAIEvaluation;
 
 use Illuminate\Support\ServiceProvider;
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\PestProcessRunner;
-use LaravelAIEvaluation\LaravelAIEvaluation\Console\RunAgentEvalsCommand;
+use LaravelAIEvaluation\Console\InstallAgentEvalsCommand;
+use LaravelAIEvaluation\Console\PestProcessRunner;
+use LaravelAIEvaluation\Console\MakeAgentEvalCommand;
+use LaravelAIEvaluation\Console\RunAgentEvalsCommand;
+use LaravelAIEvaluation\Console\StandaloneEvalRunner;
+use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\EvalRunSummary;
+use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
+use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 
 class LaravelAIEvaluationServiceProvider extends ServiceProvider
 {
-    /**
-     * Bootstrap the application services.
-     */
-    public function boot()
+    public function boot(): void
     {
-        /*
-         * Optional methods to load your package assets
-         */
-        // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'laravel-ai-evaluation');
-        // $this->loadViewsFrom(__DIR__.'/../resources/views', 'laravel-ai-evaluation');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        // $this->loadRoutesFrom(__DIR__.'/routes.php');
-
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('laravel-ai-evaluation.php'),
-            ], 'config');
+                __DIR__.'/../config/laravel-ai-evaluation.php' => config_path('laravel-ai-evaluation.php'),
+            ], 'laravel-ai-evaluation-config');
 
-            // Publishing the views.
-            /*$this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/laravel-ai-evaluation'),
-            ], 'views');*/
-
-            // Publishing assets.
-            /*$this->publishes([
-                __DIR__.'/../resources/assets' => public_path('vendor/laravel-ai-evaluation'),
-            ], 'assets');*/
-
-            // Publishing the translation files.
-            /*$this->publishes([
-                __DIR__.'/../resources/lang' => resource_path('lang/vendor/laravel-ai-evaluation'),
-            ], 'lang');*/
-
-            // Registering package commands.
             $this->commands([
+                InstallAgentEvalsCommand::class,
+                MakeAgentEvalCommand::class,
                 RunAgentEvalsCommand::class,
             ]);
         }
     }
 
-    /**
-     * Register the application services.
-     */
-    public function register()
+    public function register(): void
     {
-        // Automatically apply the package configuration
-        $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'laravel-ai-evaluation');
+        $this->mergeConfigFrom(__DIR__.'/../config/laravel-ai-evaluation.php', 'laravel-ai-evaluation');
 
-        // Register the main class to use with the facade
-        $this->app->singleton('laravel-ai-evaluation', function () {
-            return new LaravelAIEvaluation;
+        $this->app->singleton(StandaloneEvalRunner::class, function () {
+            return new StandaloneEvalRunner;
         });
 
         $this->app->singleton(PestProcessRunner::class, function () {
             return new PestProcessRunner;
+        });
+
+        $this->app->bind(JudgeClient::class, PromptJudgeClient::class);
+
+        $this->app->singleton(ResponseNormalizer::class, function () {
+            return new ResponseNormalizer;
+        });
+
+        $this->app->singleton(PromptingTargetResolver::class, function () {
+            return new PromptingTargetResolver;
+        });
+
+        $this->app->singleton(JudgeScorer::class, function () {
+            return new JudgeScorer(
+                $this->app->make(JudgeClient::class),
+                (float) config('laravel-ai-evaluation.judge.threshold', 0.7),
+            );
+        });
+
+        $this->app->singleton(EvalRunner::class, function () {
+            return new EvalRunner(
+                containsScorer: $this->app->make(ContainsScorer::class),
+                exactScorer: $this->app->make(ExactScorer::class),
+                judgeScorer: $this->app->make(JudgeScorer::class),
+                runSummary: $this->app->make(EvalRunSummary::class),
+                responseNormalizer: $this->app->make(ResponseNormalizer::class),
+                targetResolver: $this->app->make(PromptingTargetResolver::class),
+            );
+        });
+
+        $this->app->singleton(EvalRunSummary::class, function () {
+            return new EvalRunSummary;
         });
     }
 }

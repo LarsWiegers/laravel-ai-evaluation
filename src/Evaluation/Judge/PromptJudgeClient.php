@@ -2,12 +2,22 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge;
+namespace LaravelAIEvaluation\Evaluation\Judge;
 
+use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use RuntimeException;
 
 class PromptJudgeClient implements JudgeClient
 {
+    public function __construct(
+        protected ?ResponseNormalizer $responseNormalizer = null,
+        protected ?PromptingTargetResolver $targetResolver = null,
+    ) {
+        $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
+        $this->targetResolver = $this->targetResolver ?? new PromptingTargetResolver;
+    }
+
     public function evaluate(
         string $input,
         string $actualOutput,
@@ -21,16 +31,12 @@ class PromptJudgeClient implements JudgeClient
             throw new RuntimeException('Judge agent is not configured. Set laravel-ai-evaluation.judge.agent first.');
         }
 
-        $resolvedJudgeAgent = is_string($judgeAgent) ? app()->make($judgeAgent) : $judgeAgent;
-
-        if (! method_exists($resolvedJudgeAgent, 'prompt')) {
-            throw new RuntimeException('Configured judge agent must implement a prompt method.');
-        }
+        $resolvedJudgeAgent = $this->targetResolver->resolve($judgeAgent, 'judge agent');
 
         $judgePrompt = $this->buildJudgePrompt($input, $actualOutput, $criteria, $reference);
         $response = $resolvedJudgeAgent->prompt($judgePrompt);
-        $usage = $this->extractUsage($response);
-        $raw = $this->stringifyResponse($response);
+        $usage = $this->responseNormalizer->extractUsage($response);
+        $raw = $this->responseNormalizer->stringifyResponse($response, 'judge');
         $payload = $this->decodePayload($raw);
 
         if (! isset($payload['score']) || ! is_numeric($payload['score'])) {
@@ -112,75 +118,4 @@ PROMPT;
         return $decoded;
     }
 
-    protected function stringifyResponse(mixed $response): string
-    {
-        if (is_string($response)) {
-            return $response;
-        }
-
-        if (is_scalar($response)) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && method_exists($response, '__toString')) {
-            return (string) $response;
-        }
-
-        if (is_object($response) && property_exists($response, 'text') && is_string($response->text)) {
-            return $response->text;
-        }
-
-        throw new RuntimeException('Unable to convert judge response to string output.');
-    }
-
-    /**
-     * @return array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}
-     */
-    protected function extractUsage(mixed $response): array
-    {
-        $source = null;
-
-        if (is_array($response) && isset($response['usage']) && is_array($response['usage'])) {
-            $source = $response['usage'];
-        }
-
-        if (is_object($response) && isset($response->usage)) {
-            if (is_array($response->usage)) {
-                $source = $response->usage;
-            }
-
-            if (is_object($response->usage)) {
-                $source = get_object_vars($response->usage);
-            }
-        }
-
-        if (! is_array($source)) {
-            return [];
-        }
-
-        $prompt = $source['prompt_tokens'] ?? $source['input_tokens'] ?? null;
-        $completion = $source['completion_tokens'] ?? $source['output_tokens'] ?? null;
-        $total = $source['total_tokens'] ?? null;
-        $cost = $source['cost'] ?? $source['total_cost'] ?? null;
-
-        $usage = [];
-
-        if (is_numeric($prompt)) {
-            $usage['prompt_tokens'] = (int) $prompt;
-        }
-
-        if (is_numeric($completion)) {
-            $usage['completion_tokens'] = (int) $completion;
-        }
-
-        if (is_numeric($total)) {
-            $usage['total_tokens'] = (int) $total;
-        }
-
-        if (is_numeric($cost)) {
-            $usage['cost'] = (float) $cost;
-        }
-
-        return $usage;
-    }
 }

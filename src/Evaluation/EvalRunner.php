@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation;
+namespace LaravelAIEvaluation\Evaluation;
 
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
-use LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
+use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
+use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
+use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
+use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
+use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use RuntimeException;
 use Throwable;
 
@@ -17,11 +20,22 @@ class EvalRunner
         protected ContainsScorer $containsScorer = new ContainsScorer,
         protected ExactScorer $exactScorer = new ExactScorer,
         protected ?JudgeScorer $judgeScorer = null,
+        protected ?EvalRunSummary $runSummary = null,
+        protected ?ResponseNormalizer $responseNormalizer = null,
+        protected ?PromptingTargetResolver $targetResolver = null,
+        protected ?int $retries = null,
+        protected ?int $retrySleepMs = null,
     ) {
         $this->judgeScorer = $this->judgeScorer ?? new JudgeScorer(
             new PromptJudgeClient,
             (float) config('laravel-ai-evaluation.judge.threshold', 0.7),
         );
+
+        $this->retries = $this->retries ?? max(0, (int) config('laravel-ai-evaluation.retries', 0));
+        $this->retrySleepMs = $this->retrySleepMs ?? max(0, (int) config('laravel-ai-evaluation.retry_sleep_ms', 0));
+        $this->runSummary = $this->runSummary ?? (function_exists('app') ? app(EvalRunSummary::class) : new EvalRunSummary);
+        $this->responseNormalizer = $this->responseNormalizer ?? new ResponseNormalizer;
+        $this->targetResolver = $this->targetResolver ?? new PromptingTargetResolver;
     }
 
     /**
@@ -30,39 +44,25 @@ class EvalRunner
      */
     public function run(
         object|string $agent,
-        string $caseId,
+        ?string $name,
         string $input,
         array $contains = [],
         ?string $exact = null,
         array $judgeExpectations = [],
         ?string $location = null,
     ): EvalResult {
+        $name = $this->resolveName($name);
+
         if ($contains === [] && $exact === null && $judgeExpectations === []) {
-            throw new RuntimeException("AI eval '{$caseId}' must define at least one expectation.");
+            throw new RuntimeException("AI eval '{$name}' must define at least one expectation.");
         }
 
-        $resolvedAgent = is_string($agent) ? app()->make($agent) : $agent;
+        $resolvedAgent = $this->targetResolver->resolve($agent, 'agent', $name);
 
-        if (! method_exists($resolvedAgent, 'prompt')) {
-            throw new RuntimeException("AI eval '{$caseId}' agent must implement a prompt method.");
-        }
+        $response = $this->promptAgent($resolvedAgent, $input, $name);
 
-        try {
-            $response = $resolvedAgent->prompt($input);
-        } catch (Throwable $exception) {
-            if ($this->isAuthenticationFailure($exception)) {
-                throw new RuntimeException(
-                    "AI eval '{$caseId}' failed: Authentication error. Check your AI provider API key is configured.",
-                    0,
-                    $exception,
-                );
-            }
-
-            throw $exception;
-        }
-
-        $usage = $this->extractUsage($response);
-        $output = $this->stringifyResponse($response);
+        $usage = $this->responseNormalizer->extractUsage($response);
+        $output = $this->responseNormalizer->stringifyResponse($response, 'AI agent');
 
         $failures = [];
         $expectationResults = [];
@@ -101,13 +101,10 @@ class EvalRunner
         }
 
         foreach ($judgeExpectations as $judgeExpectation) {
-            $result = $this->judgeScorer->score(
+            $result = $this->scoreJudgeExpectation(
                 input: $input,
-                actualOutput: $output,
-                criteria: $judgeExpectation['criteria'],
-                reference: $judgeExpectation['reference'],
-                threshold: $judgeExpectation['threshold'],
-                judge: $judgeExpectation['judge'] ?? null,
+                output: $output,
+                judgeExpectation: $judgeExpectation,
             );
 
             $expectationResults[] = [
@@ -133,15 +130,30 @@ class EvalRunner
             }
         }
 
-        $result = new EvalResult($caseId, $input, $output, $failures, $expectationResults, $location, $usage);
+        $result = new EvalResult($name, $input, $output, $failures, $expectationResults, $location, $usage);
 
-        EvalRunSummary::record($result);
+        $this->runSummary->record($result);
 
         if ((bool) config('laravel-ai-evaluation.verbose', false)) {
             $result->dump(format: (string) config('laravel-ai-evaluation.format', 'text'));
         }
 
         return $result;
+    }
+
+    protected function resolveName(?string $name): string
+    {
+        if (is_string($name) && trim($name) !== '') {
+            return $name;
+        }
+
+        $standaloneName = StandaloneEvalContext::currentName();
+
+        if ($standaloneName !== null) {
+            return $standaloneName;
+        }
+
+        return 'unnamed-eval';
     }
 
     protected function isAuthenticationFailure(Throwable $exception): bool
@@ -153,76 +165,95 @@ class EvalRunner
         return str_contains(strtolower($exception->getMessage()), '401');
     }
 
-    protected function stringifyResponse(mixed $response): string
+    protected function promptAgent(object $agent, string $input, string $name): mixed
     {
-        if (is_string($response)) {
-            return $response;
-        }
+        $attempt = 0;
 
-        if (is_scalar($response)) {
-            return (string) $response;
-        }
+        while (true) {
+            try {
+                return $agent->prompt($input);
+            } catch (Throwable $exception) {
+                if ($this->isAuthenticationFailure($exception)) {
+                    throw new RuntimeException(
+                        "AI eval '{$name}' failed: Authentication error. Check your AI provider API key is configured.",
+                        0,
+                        $exception,
+                    );
+                }
 
-        if (is_object($response) && method_exists($response, '__toString')) {
-            return (string) $response;
-        }
+                if ($attempt >= $this->retries || ! $this->shouldRetry($exception)) {
+                    throw $exception;
+                }
 
-        if (is_object($response) && property_exists($response, 'text') && is_string($response->text)) {
-            return $response->text;
+                $attempt++;
+                $this->sleepBeforeRetry();
+            }
         }
-
-        throw new RuntimeException('Unable to convert AI response to string output for evaluation.');
     }
 
     /**
-     * @return array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}
+     * @param  array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}  $judgeExpectation
+     * @return array{score: float, threshold: float, passed: bool, reason: string, usage: array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int, cost?: float}}
      */
-    protected function extractUsage(mixed $response): array
+    protected function scoreJudgeExpectation(string $input, string $output, array $judgeExpectation): array
     {
-        $source = null;
+        $attempt = 0;
 
-        if (is_array($response) && isset($response['usage']) && is_array($response['usage'])) {
-            $source = $response['usage'];
-        }
+        while (true) {
+            try {
+                return $this->judgeScorer->score(
+                    input: $input,
+                    actualOutput: $output,
+                    criteria: $judgeExpectation['criteria'],
+                    reference: $judgeExpectation['reference'],
+                    threshold: $judgeExpectation['threshold'],
+                    judge: $judgeExpectation['judge'] ?? null,
+                );
+            } catch (Throwable $exception) {
+                if ($attempt >= $this->retries || ! $this->shouldRetry($exception)) {
+                    throw $exception;
+                }
 
-        if (is_object($response) && isset($response->usage)) {
-            if (is_array($response->usage)) {
-                $source = $response->usage;
+                $attempt++;
+                $this->sleepBeforeRetry();
             }
+        }
+    }
 
-            if (is_object($response->usage)) {
-                $source = get_object_vars($response->usage);
+    protected function sleepBeforeRetry(): void
+    {
+        if ($this->retrySleepMs <= 0) {
+            return;
+        }
+
+        usleep($this->retrySleepMs * 1000);
+    }
+
+    protected function shouldRetry(Throwable $exception): bool
+    {
+        $class = strtolower($exception::class);
+        $message = strtolower($exception->getMessage());
+        $code = is_numeric($exception->getCode()) ? (int) $exception->getCode() : null;
+
+        if ($code === 401 || str_contains($message, 'unauthorized')) {
+            return false;
+        }
+
+        if ($code === 429 || ($code !== null && $code >= 500 && $code < 600)) {
+            return true;
+        }
+
+        if (str_contains($class, 'connection') || str_contains($class, 'timeout')) {
+            return true;
+        }
+
+        foreach (['timed out', 'timeout', 'temporar', 'rate limit', 'too many requests', 'connection', 'try again', 'service unavailable'] as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
             }
         }
 
-        if (! is_array($source)) {
-            return [];
-        }
-
-        $prompt = $source['prompt_tokens'] ?? $source['input_tokens'] ?? null;
-        $completion = $source['completion_tokens'] ?? $source['output_tokens'] ?? null;
-        $total = $source['total_tokens'] ?? null;
-        $cost = $source['cost'] ?? $source['total_cost'] ?? null;
-
-        $usage = [];
-
-        if (is_numeric($prompt)) {
-            $usage['prompt_tokens'] = (int) $prompt;
-        }
-
-        if (is_numeric($completion)) {
-            $usage['completion_tokens'] = (int) $completion;
-        }
-
-        if (is_numeric($total)) {
-            $usage['total_tokens'] = (int) $total;
-        }
-
-        if (is_numeric($cost)) {
-            $usage['cost'] = (float) $cost;
-        }
-
-        return $usage;
+        return false;
     }
 
     /**

@@ -9,9 +9,9 @@ name: ai-evals
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   agent-evals:
@@ -34,6 +34,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_EVAL_FORMAT: json
+          AI_EVAL_RETRIES: 1
+          AI_EVAL_RETRY_SLEEP_MS: 250
           AI_EVAL_SUMMARY: true
           AI_EVAL_SUMMARY_FORMAT: json
           AI_EVAL_SUMMARY_CURRENCY: USD
@@ -50,5 +52,5 @@ php artisan ai-evals:run --filter="refund"
 
 - The command exits non-zero on failure, so CI will fail automatically.
 - Keep API keys in CI secrets, never in the repository.
-- Start with a small `tests/AgentEvals` suite and expand gradually.
+- Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
 - `AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` both support `text` and `json`.

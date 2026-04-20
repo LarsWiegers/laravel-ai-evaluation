@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelAIEvaluation\LaravelAIEvaluation\Evaluation\Scoring;
+namespace LaravelAIEvaluation\Evaluation\Scoring;
 
 class ContainsScorer
 {
