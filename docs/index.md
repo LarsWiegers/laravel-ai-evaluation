@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Laravel AI Evaluation
   text: Real-call LLM evals for Laravel AI
-  tagline: Validate model output quality in Laravel with Pest or standalone eval files.
+  tagline: Make sure your agents respond how you want them to.
   actions:
     - theme: brand
       text: Run in Pest
@@ -78,14 +78,48 @@ php artisan ai-evals:run
 
 :::
 
-## Learn More
+### 5) Configure summary output
 
-- [Installation](./installation)
-- [When to run evals](./when-to-run-evals)
-- [Create eval files](./creating-evals)
-- [Expectations overview](./expectations)
-- [Deterministic expectations](./deterministic-expectations)
-- [LLM-as-judge expectations](./llm-as-judge-expectations)
-- [Run in Pest](./running-in-pest)
-- [Run standalone](./running-standalone)
-- [Run in CI](./running-in-ci)
+Enable summaries and choose the format in your `.env` (or CI environment):
+
+::: code-group
+
+```env [Text]
+AI_EVAL_SUMMARY=true
+AI_EVAL_SUMMARY_FORMAT=text
+AI_EVAL_SUMMARY_CURRENCY=USD
+```
+
+```env [JSON]
+AI_EVAL_SUMMARY=true
+AI_EVAL_SUMMARY_FORMAT=json
+AI_EVAL_SUMMARY_CURRENCY=USD
+```
+
+:::
+
+### 6) Get the summary output
+
+Run your evals and check the end of the output:
+
+::: code-group
+
+```text [Text]
+$ vendor/bin/pest tests/AgentEvals
+
+AI Eval Summary
+Passed: 12
+Failed: 1
+Prompt tokens: 7,842
+Completion tokens: 1,966
+Total tokens: 9,808
+Estimated cost: $0.07 USD
+```
+
+```json [JSON]
+$ php artisan ai-evals:run
+
+{"passed":12,"failed":1,"tokens":{"prompt":7842,"completion":1966,"total":9808},"cost":{"amount":0.07,"currency":"USD"}}
+```
+
+:::

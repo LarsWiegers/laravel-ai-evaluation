@@ -78,3 +78,21 @@ AI_EVAL_SUMMARY=true
 AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
+
+Example text summary output:
+
+```text
+AI Eval Summary
+Passed: 12
+Failed: 1
+Prompt tokens: 7,842
+Completion tokens: 1,966
+Total tokens: 9,808
+Estimated cost: $0.07 USD
+```
+
+Example JSON summary output (`AI_EVAL_SUMMARY_FORMAT=json`):
+
+```json
+{"passed":12,"failed":1,"tokens":{"prompt":7842,"completion":1966,"total":9808},"cost":{"amount":0.07,"currency":"USD"}}
+```

@@ -183,10 +183,16 @@ Run the deterministic package test suite (live AI evals excluded):
 composer test
 ```
 
-Run live AI evals only (requires provider credentials like `OPENAI_API_KEY`):
+Example summary output:
 
-```bash
-composer test-live
+```text
+AI Eval Summary
+Passed: 12
+Failed: 1
+Prompt tokens: 7,842
+Completion tokens: 1,966
+Total tokens: 9,808
+Estimated cost: $0.07 USD
 ```
 
 ### Changelog
