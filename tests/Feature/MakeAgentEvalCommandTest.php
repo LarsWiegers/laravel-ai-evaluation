@@ -5,7 +5,7 @@ declare(strict_types=1);
 it('creates a pest eval test file', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'pest',
         '--path' => $path,
@@ -24,7 +24,7 @@ it('creates a pest eval test file', function () {
 it('creates a standalone eval file', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'standalone',
         '--path' => $path,
@@ -44,7 +44,7 @@ it('creates a standalone eval file', function () {
 it('preserves eval name casing for standalone file name and suite label', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'FinancialAdvisorAgent',
         '--type' => 'standalone',
         '--path' => $path,
@@ -62,7 +62,7 @@ it('preserves eval name casing for standalone file name and suite label', functi
 it('uses custom agent class in generated templates', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'custom-agent',
         '--type' => 'pest',
         '--path' => $path,
@@ -82,14 +82,14 @@ it('scaffolds the same custom agent class for pest and standalone templates', fu
     $path = createMakeEvalDirectory();
     $agent = 'App\\Ai\\Agents\\BillingAgent';
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'billing-pest',
         '--type' => 'pest',
         '--path' => $path,
         '--agent' => $agent,
     ])->assertExitCode(0);
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'billing-standalone',
         '--type' => 'standalone',
         '--path' => $path,
@@ -111,7 +111,7 @@ it('scaffolds the same custom agent class for pest and standalone templates', fu
 it('fails for invalid eval type', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'xml',
         '--path' => $path,
@@ -121,13 +121,13 @@ it('fails for invalid eval type', function () {
 it('fails when file exists unless force is provided', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'pest',
         '--path' => $path,
     ])->assertExitCode(0);
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'pest',
         '--path' => $path,
@@ -136,7 +136,7 @@ it('fails when file exists unless force is provided', function () {
     $file = base_path($path.'/RefundPolicyEvalTest.php');
     file_put_contents($file, 'modified');
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
         '--type' => 'pest',
         '--path' => $path,

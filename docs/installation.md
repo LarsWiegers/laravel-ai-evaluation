@@ -21,13 +21,13 @@ php artisan ai-evals:install
 Generate your first eval file:
 
 ```bash
-php artisan ai-evals:make refund-policy --type=pest
+php artisan make:ai-evals refund-policy --type=pest
 ```
 
 Or standalone:
 
 ```bash
-php artisan ai-evals:make refund-policy --type=standalone
+php artisan make:ai-evals refund-policy --type=standalone
 ```
 
 ## Default test case (Pest)

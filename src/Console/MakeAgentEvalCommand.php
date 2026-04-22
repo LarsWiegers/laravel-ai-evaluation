@@ -16,7 +16,7 @@ class MakeAgentEvalCommand extends Command
         parent::__construct();
     }
 
-    protected $signature = 'ai-evals:make
+    protected $signature = 'make:ai-evals
         {name : Eval name (for example: refund-policy)}
         {--type= : Eval style: pest or standalone}
         {--agent= : Agent class to use in generated template}

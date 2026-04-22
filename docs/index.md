@@ -53,11 +53,11 @@ No additional setup is required.
 ::: code-group
 
 ```bash [Pest]
-php artisan ai-evals:make refund-policy --type=pest
+php artisan make:ai-evals refund-policy --type=pest
 ```
 
 ```bash [Standalone]
-php artisan ai-evals:make refund-policy --type=standalone
+php artisan make:ai-evals refund-policy --type=standalone
 ```
 
 :::

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  base: '/laravel-ai-evaluation/',
+  base: '/',
   title: 'Laravel AI Evaluation',
   description: 'Real-call LLM evals for Laravel AI',
   themeConfig: {
@@ -32,6 +32,7 @@ export default defineConfig({
         items: [
           { text: 'Installation', link: '/installation' },
           { text: 'Create eval files', link: '/creating-evals' },
+          { text: 'Dealing with rate limits', link: '/dealing-with-rate-limits' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },
         ],
@@ -51,6 +52,7 @@ export default defineConfig({
         items: [
           { text: 'Installation', link: '/installation' },
           { text: 'Create eval files', link: '/creating-evals' },
+          { text: 'Dealing with rate limits', link: '/dealing-with-rate-limits' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },
         ],
