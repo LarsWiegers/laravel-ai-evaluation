@@ -40,6 +40,7 @@ it('extracts usage from response object usage object', function () {
     expect($usage)->toBe([
         'prompt_tokens' => 7,
         'completion_tokens' => 2,
+        'total_tokens' => 9,
         'cost' => 0.0009,
     ]);
 });

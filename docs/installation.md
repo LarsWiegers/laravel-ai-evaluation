@@ -3,7 +3,7 @@
 Install the package with Composer:
 
 ```bash
-composer require larswiegers/laravel-ai-evaluation
+composer require --dev larswiegers/laravel-ai-evaluation
 ```
 
 The service provider is auto-discovered by Laravel.

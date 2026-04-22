@@ -41,6 +41,24 @@ it('creates a standalone eval file', function () {
     expect($content)->not->toContain('->assertPasses();');
 });
 
+it('preserves eval name casing for standalone file name and suite label', function () {
+    $path = createMakeEvalDirectory();
+
+    $this->artisan('ai-evals:make', [
+        'name' => 'FinancialAdvisorAgent',
+        '--type' => 'standalone',
+        '--path' => $path,
+    ])->assertExitCode(0);
+
+    $file = base_path($path.'/FinancialAdvisorAgent.eval.php');
+
+    expect(is_file($file))->toBeTrue();
+
+    $content = (string) file_get_contents($file);
+
+    expect($content)->toContain("->eval('FinancialAdvisorAgent'");
+});
+
 it('uses custom agent class in generated templates', function () {
     $path = createMakeEvalDirectory();
 

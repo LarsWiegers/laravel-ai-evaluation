@@ -59,6 +59,11 @@ class ResponseNormalizer
         $total = $source['total_tokens'] ?? null;
         $cost = $source['cost'] ?? $source['total_cost'] ?? null;
 
+        $prompt ??= $source['promptTokens'] ?? null;
+        $completion ??= $source['completionTokens'] ?? null;
+        $total ??= $source['totalTokens'] ?? null;
+        $cost ??= $source['totalCost'] ?? null;
+
         $usage = [];
 
         if (is_numeric($prompt)) {
@@ -71,6 +76,8 @@ class ResponseNormalizer
 
         if (is_numeric($total)) {
             $usage['total_tokens'] = (int) $total;
+        } elseif (isset($usage['prompt_tokens'], $usage['completion_tokens'])) {
+            $usage['total_tokens'] = $usage['prompt_tokens'] + $usage['completion_tokens'];
         }
 
         if (is_numeric($cost)) {
