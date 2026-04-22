@@ -6,9 +6,6 @@ Use judge expectations when semantic quality matters more than exact text matchi
 
 The package ships with a default judge agent: `DefaultJudgeAgent`.
 
-If Laravel AI is available, it is used automatically so you can start without creating a custom judge.
-The default judge first uses the Laravel AI facade and otherwise falls back to a Promptable judge agent.
-
 ## Configure a custom judge agent (optional)
 
 Override the default judge in `config/laravel-ai-evaluation.php`:
@@ -26,7 +23,29 @@ The judge agent must expose a `prompt(string $prompt)` method.
 
 You can also pass a judge directly per expectation.
 
-## Configure one judge for multiple expectations
+## Judge requirements
+
+For a judge to work with this package, it must meet these requirements:
+
+- It must be resolvable as a class string from the container, or passed as an object instance.
+- It must implement `Laravel\Ai\Contracts\Agent` or expose `prompt(string $prompt)`.
+- Its response must include valid JSON with:
+  - `score` (numeric, between `0` and `1`)
+  - `reason` (string)
+
+Expected payload shape:
+
+```json
+{"score":0.82,"reason":"Mostly correct and clear; misses one policy detail."}
+```
+
+Important behavior notes:
+
+- The package expects strict JSON and validates both required fields.
+- If the response includes extra text, the parser attempts to extract the first JSON object, but returning plain JSON is strongly recommended.
+- If `score` is outside `0..1`, missing, or non-numeric, the eval fails with a judge response error.
+
+## Configure a different judge for eval expectations
 
 Use `useJudge()` to avoid passing the same judge repeatedly:
 
@@ -37,11 +56,6 @@ AIEval::agent(SupportAgent::class)
     ->input('What is your refund policy?')
     ->useJudge(App\Ai\Agents\JudgeAgent::class)
     ->expectJudge('The answer should be clear and policy accurate.', threshold: 0.8)
-    ->expectJudgeAgainst(
-        reference: 'Refunds are available within 30 days of purchase.',
-        criteria: 'The answer should match the policy and mention the timeframe.',
-        threshold: 0.8,
-    )
     ->run()
     ->assertPasses();
 ```

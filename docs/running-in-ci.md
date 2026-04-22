@@ -54,3 +54,4 @@ php artisan ai-evals:run --filter="refund"
 - Keep API keys in CI secrets, never in the repository.
 - Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
 - `AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` both support `text` and `json`.
+- If CI hits `429`/rate limits, follow the dedicated guide: [Dealing with rate limits](/dealing-with-rate-limits).

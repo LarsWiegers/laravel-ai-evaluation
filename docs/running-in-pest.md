@@ -38,6 +38,10 @@ pest()->extend(Tests\TestCase::class)->in('Feature', 'AgentEvals');
 vendor/bin/pest
 ```
 
+::: warning We do not recommend parallel runs for live evals
+Avoid `vendor/bin/pest --parallel` for `tests/AgentEvals`. Parallel workers can burst API requests and trigger provider rate limits (`429`, `too many requests`). If this happens, follow [Dealing with rate limits](/dealing-with-rate-limits).
+:::
+
 When an eval fails, the test fails with a PHPUnit assertion message from `assertPasses()`.
 
 ## Optional: verbose output during Pest runs

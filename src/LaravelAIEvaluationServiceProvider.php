@@ -45,10 +45,6 @@ class LaravelAIEvaluationServiceProvider extends ServiceProvider
             return new StandaloneEvalRunner;
         });
 
-        $this->app->singleton(PestProcessRunner::class, function () {
-            return new PestProcessRunner;
-        });
-
         $this->app->bind(JudgeClient::class, PromptJudgeClient::class);
 
         $this->app->singleton(ResponseNormalizer::class, function () {
