@@ -44,7 +44,7 @@ it('creates a standalone eval file', function () {
 it('preserves eval name casing for standalone file name and suite label', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('ai-evals:make', [
+    $this->artisan('make:ai-evals', [
         'name' => 'FinancialAdvisorAgent',
         '--type' => 'standalone',
         '--path' => $path,
