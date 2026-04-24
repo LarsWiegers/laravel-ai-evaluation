@@ -3,27 +3,29 @@ layout: home
 
 hero:
   name: Laravel AI Evaluation
-  text: Real-call LLM evals for Laravel AI
   tagline: Make sure your agents respond how you want them to.
   actions:
     - theme: brand
-      text: Run in Pest
-      link: /running-in-pest
-    - theme: alt
       text: Run Standalone
       link: /running-standalone
+    - theme: alt
+      text: Run in Pest
+      link: /running-in-pest
+
 
 features:
   - title: Real model calls
     details: Evaluate actual AI behavior, not mocked responses.
-  - title: Pest native
-    details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
+    link: /when-to-run-evals
   - title: Standalone Artisan runner
     details: Run eval files via `php artisan ai-evals:run` without Pest or PHPUnit.
-  - title: Output control
-    details: Use text or JSON output with verbose mode and run summaries.
+    link: /running-standalone
+  - title: Pest native
+    details: Run directly inside Pest from `tests/AgentEvals` with a fluent API.
+    link: /running-in-pest
   - title: CI ready
     details: Evals hard-fail when expectations are not met.
+    link: /running-in-ci
 ---
 
 ## Quick Start
