@@ -4,6 +4,7 @@ export default defineConfig({
   base: '/',
   title: 'Laravel AI Evaluation',
   description: 'Real-call LLM evals for Laravel AI',
+  head: [['link', { rel: 'icon', href: '/box.svg' }]],
   themeConfig: {
     logo: '/box.svg',
     search: {
