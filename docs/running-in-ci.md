@@ -52,6 +52,8 @@ php artisan ai-evals:run --filter="refund"
 
 - The command exits non-zero on failure, so CI will fail automatically.
 - Keep API keys in CI secrets, never in the repository.
+- Prefer a dedicated API key for eval jobs (separate from production) with limited quota/budget.
+- Keep eval jobs serial to reduce `429` bursts when using a shared provider key.
 - Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
 - `AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` both support `text` and `json`.
 - If CI hits `429`/rate limits, follow the dedicated guide: [Dealing with rate limits](/dealing-with-rate-limits).

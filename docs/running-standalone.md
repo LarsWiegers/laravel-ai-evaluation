@@ -53,6 +53,29 @@ return static function (StandaloneEvalSuite $suite): void {
 };
 ```
 
+## Use real provider keys safely
+
+Live evals call real model APIs, so keep credentials outside your repository.
+
+- Set provider API keys in `.env` for local development and in secret stores for CI.
+- Do not commit keys to eval files, config files, or source control.
+- Prefer a dedicated eval key (separate from production) with quota and spend limits.
+- Keep live eval runs serial (`php artisan ai-evals:run`) to avoid burst traffic.
+
+Example local `.env` setup:
+
+```env
+# Use the provider key names expected by your Laravel AI configuration.
+OPENAI_API_KEY=your-openai-key
+# ANTHROPIC_API_KEY=your-anthropic-key
+
+AI_EVAL_RETRIES=1
+AI_EVAL_RETRY_SLEEP_MS=250
+AI_EVAL_SUMMARY=true
+AI_EVAL_SUMMARY_FORMAT=text
+AI_EVAL_SUMMARY_CURRENCY=USD
+```
+
 ## Output and summary options
 
 The standalone runner supports verbose eval output format configuration:
