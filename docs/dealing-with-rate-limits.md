@@ -24,7 +24,7 @@ php artisan ai-evals:run
 
 Then add conservative retry settings:
 
-```env
+```dotenv
 AI_EVAL_RETRIES=2
 AI_EVAL_RETRY_SLEEP_MS=500
 ```

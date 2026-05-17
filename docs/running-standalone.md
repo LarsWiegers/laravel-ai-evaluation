@@ -64,7 +64,7 @@ Live evals call real model APIs, so keep credentials outside your repository.
 
 Example local `.env` setup:
 
-```env
+```dotenv
 # Use the provider key names expected by your Laravel AI configuration.
 OPENAI_API_KEY=your-openai-key
 # ANTHROPIC_API_KEY=your-anthropic-key
@@ -80,14 +80,14 @@ AI_EVAL_SUMMARY_CURRENCY=USD
 
 The standalone runner supports verbose eval output format configuration:
 
-```env
+```dotenv
 AI_EVAL_VERBOSE=true
 AI_EVAL_FORMAT=json
 ```
 
 For transient provider/network issues, you can add lightweight retries:
 
-```env
+```dotenv
 AI_EVAL_RETRIES=1
 AI_EVAL_RETRY_SLEEP_MS=250
 ```
@@ -96,7 +96,7 @@ Supported formats are `text` and `json`.
 
 You can configure end-of-run summaries with:
 
-```env
+```dotenv
 AI_EVAL_SUMMARY=true
 AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
@@ -106,16 +106,17 @@ Example text summary output:
 
 ```text
 AI Eval Summary
+Total: 13
 Passed: 12
 Failed: 1
-Prompt tokens: 7,842
-Completion tokens: 1,966
-Total tokens: 9,808
-Estimated cost: $0.07 USD
+Prompt tokens: 7842
+Completion tokens: 1966
+Total tokens: 9808
+Estimated cost: USD 0.070000
 ```
 
 Example JSON summary output (`AI_EVAL_SUMMARY_FORMAT=json`):
 
 ```json
-{"passed":12,"failed":1,"tokens":{"prompt":7842,"completion":1966,"total":9808},"cost":{"amount":0.07,"currency":"USD"}}
+{"type":"ai_eval_summary","total":13,"passed":12,"failed":1,"prompt_tokens":7842,"completion_tokens":1966,"total_tokens":9808,"estimated_cost":0.07,"currency":"USD"}
 ```

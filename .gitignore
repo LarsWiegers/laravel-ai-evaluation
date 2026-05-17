@@ -1,4 +1,5 @@
 /.idea
+/.ai
 /.phpunit.cache
 /coverage
 /composer.lock

@@ -23,6 +23,28 @@ The judge agent must expose a `prompt(string $prompt)` method.
 
 You can also pass a judge directly per expectation.
 
+Minimal compatible judge shape:
+
+```php
+namespace App\Ai\Agents;
+
+use Illuminate\Support\Facades\AI;
+
+final class JudgeAgent
+{
+    public function prompt(string $prompt): string
+    {
+        return (string) AI::prompt($prompt);
+    }
+}
+```
+
+The package sends this judge a complete scoring prompt. Your judge should return JSON only:
+
+```json
+{"score":0.82,"reason":"Correct and clear; misses one policy detail."}
+```
+
 ## Judge requirements
 
 For a judge to work with this package, it must meet these requirements:
@@ -101,4 +123,6 @@ AIEval::agent(SupportAgent::class)
 
 - Judge score is expected between `0` and `1`.
 - Any expectation below threshold fails the eval.
+- Prefer explicit criteria with product requirements, not vague instructions like "good answer".
+- Use `expectJudgeAgainst()` when you have a known-good reference answer.
 - In CI this causes hard-fail behavior when using Pest or `php artisan ai-evals:run`.
