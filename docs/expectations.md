@@ -8,3 +8,5 @@ Expectations define how an eval case passes or fails.
 - [LLM-as-judge expectations](./llm-as-judge-expectations)
 
 More expectation types can be added over time.
+
+For method signatures and return values, see the [API reference](/api-reference).

@@ -12,6 +12,7 @@ export default defineConfig({
     },
     nav: [
       { text: 'Home', link: '/' },
+      { text: 'First Eval', link: '/first-eval' },
       {
         text: 'Pest',
         items: [{ text: 'Run in Pest', link: '/running-in-pest' }],
@@ -32,7 +33,10 @@ export default defineConfig({
         text: 'Guides',
         items: [
           { text: 'Installation', link: '/installation' },
+          { text: 'Concepts', link: '/concepts' },
           { text: 'Create eval files', link: '/creating-evals' },
+          { text: 'API reference', link: '/api-reference' },
+          { text: 'Troubleshooting', link: '/troubleshooting' },
           { text: 'Dealing with rate limits', link: '/dealing-with-rate-limits' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },
@@ -59,8 +63,12 @@ export default defineConfig({
       {
         text: 'Getting Started',
         items: [
+          { text: 'First eval in 5 minutes', link: '/first-eval' },
           { text: 'Installation', link: '/installation' },
+          { text: 'Concepts', link: '/concepts' },
           { text: 'Create eval files', link: '/creating-evals' },
+          { text: 'API reference', link: '/api-reference' },
+          { text: 'Troubleshooting', link: '/troubleshooting' },
           { text: 'Dealing with rate limits', link: '/dealing-with-rate-limits' },
           { text: 'When to run evals', link: '/when-to-run-evals' },
           { text: 'Run in CI', link: '/running-in-ci' },

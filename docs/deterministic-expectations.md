@@ -58,3 +58,17 @@ AIEval::agent(SupportAgent::class)
 ```
 
 If either expectation fails, the eval fails.
+
+## Failure output
+
+When a required substring is missing, the failure explains which requirement was not met:
+
+```text
+Missing required substring(s): 30 days
+```
+
+When exact matching fails, the failure includes both values:
+
+```text
+Expected exact output "OK" but received "Okay"
+```

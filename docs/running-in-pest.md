@@ -55,7 +55,7 @@ Live evals call real model APIs, so keep credentials outside your repository.
 
 Example local `.env` setup:
 
-```env
+```dotenv
 # Use the provider key names expected by your Laravel AI configuration.
 OPENAI_API_KEY=your-openai-key
 # ANTHROPIC_API_KEY=your-anthropic-key
@@ -69,7 +69,7 @@ AI_EVAL_SUMMARY_CURRENCY=USD
 
 ## Optional: verbose output during Pest runs
 
-```env
+```dotenv
 AI_EVAL_VERBOSE=true
 AI_EVAL_FORMAT=text
 ```

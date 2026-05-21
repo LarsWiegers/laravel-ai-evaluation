@@ -48,6 +48,27 @@ jobs:
 php artisan ai-evals:run --filter="refund"
 ```
 
+## Recommended strategy
+
+Start with a small high-signal eval suite on pull requests. Run broader eval coverage before releases or on a schedule.
+
+Good PR candidates:
+
+- Prompts or system instructions changed
+- Agent tools changed
+- Retrieval or knowledge-base logic changed
+- Model, provider, or temperature settings changed
+
+For larger suites, use a dedicated scheduled workflow:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 3 * * *'
+```
+
+Keep live eval jobs serial unless each job has its own provider key and quota.
+
 ## Important notes
 
 - The command exits non-zero on failure, so CI will fail automatically.

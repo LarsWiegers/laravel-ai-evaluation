@@ -6,11 +6,11 @@ hero:
   tagline: Make sure your agents respond how you want them to.
   actions:
     - theme: brand
-      text: Run Standalone
-      link: /running-standalone
+      text: First Eval
+      link: /first-eval
     - theme: alt
-      text: Run in Pest
-      link: /running-in-pest
+      text: Concepts
+      link: /concepts
 
 
 features:
@@ -29,6 +29,8 @@ features:
 ---
 
 ## Quick Start
+
+For a guided walkthrough, start with [First eval in 5 minutes](/first-eval).
 
 ### 1) Install
 
@@ -86,13 +88,13 @@ Enable summaries and choose the format in your `.env` (or CI environment):
 
 ::: code-group
 
-```env [Text]
+```dotenv [Text]
 AI_EVAL_SUMMARY=true
 AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
-```env [JSON]
+```dotenv [JSON]
 AI_EVAL_SUMMARY=true
 AI_EVAL_SUMMARY_FORMAT=json
 AI_EVAL_SUMMARY_CURRENCY=USD
@@ -110,18 +112,19 @@ Run your evals and check the end of the output:
 $ vendor/bin/pest tests/AgentEvals
 
 AI Eval Summary
+Total: 13
 Passed: 12
 Failed: 1
-Prompt tokens: 7,842
-Completion tokens: 1,966
-Total tokens: 9,808
-Estimated cost: $0.07 USD
+Prompt tokens: 7842
+Completion tokens: 1966
+Total tokens: 9808
+Estimated cost: USD 0.070000
 ```
 
 ```json [JSON]
 $ php artisan ai-evals:run
 
-{"passed":12,"failed":1,"tokens":{"prompt":7842,"completion":1966,"total":9808},"cost":{"amount":0.07,"currency":"USD"}}
+{"type":"ai_eval_summary","total":13,"passed":12,"failed":1,"prompt_tokens":7842,"completion_tokens":1966,"total_tokens":9808,"estimated_cost":0.07,"currency":"USD"}
 ```
 
 :::
