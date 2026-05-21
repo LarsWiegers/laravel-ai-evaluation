@@ -13,9 +13,10 @@ jobs:
       fail-fast: true
       matrix:
         php: [8.3, 8.4]
+        laravel-ai: ['0.5.*', '0.6.*', '0.7.*']
         stability: [prefer-lowest, prefer-stable]
 
-    name: PHP ${{ matrix.php }} - ${{ matrix.stability }}
+    name: PHP ${{ matrix.php }} - Laravel AI ${{ matrix.laravel-ai }} - ${{ matrix.stability }}
 
     steps:
       - name: Checkout code
@@ -28,6 +29,9 @@ jobs:
           extensions: dom, mbstring, zip, pdo_sqlite
           coverage: none
           tools: composer:v2
+
+      - name: Pin Laravel AI version
+        run: composer require "laravel/ai:${{ matrix.laravel-ai }}" --no-update --no-interaction
 
       - name: Install dependencies
         run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
