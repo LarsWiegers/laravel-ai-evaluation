@@ -39,6 +39,25 @@ jobs:
       - name: Execute tests
         run: composer test
 
+  github-report-format:
+    runs-on: ubuntu-latest
+    name: GitHub annotation report format
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, mbstring, zip, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
       - name: Test GitHub annotation report format
         shell: bash
         run: |
