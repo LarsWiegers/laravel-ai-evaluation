@@ -41,7 +41,7 @@ jobs:
 
   github-report-format:
     runs-on: ubuntu-latest
-    name: GitHub annotation report format
+    name: Verify GitHub annotations for failing evals
 
     steps:
       - name: Checkout code
@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
 
-      - name: Test GitHub annotation report format
+      - name: Verify failing eval emits GitHub annotation
         shell: bash
         run: |
           marker="$(uuidgen)"
