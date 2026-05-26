@@ -226,6 +226,26 @@ Use `expectExact()` when the full response must match exactly after trimming:
 ->expectExact('OK')
 ```
 
+Use other deterministic checks when the output has concrete structure or boundaries:
+
+```php
+->expectRegex('/refunds? within \d+ days/i')
+->expectNotContains(['legal guarantee', 'always approved'])
+->expectJson()
+->expectJsonPath('status', 'eligible')
+->expectLength(max: 500)
+->expectStartsWith('{')
+->expectEndsWith('}')
+```
+
+Use `expect()` for product-specific checks implemented as closures, invokable
+classes, or classes implementing `LaravelAIEvaluation\Contracts\EvalExpectation`:
+
+```php
+->expect(fn (string $output): bool => str_contains($output, '30 days'))
+->expect(App\Ai\Evals\Expectations\RefundPolicyExpectation::class)
+```
+
 Use `expectJudge()` when the response quality is semantic and cannot be reduced
 to reliable substrings:
 
@@ -329,7 +349,7 @@ AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
-`AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` support `text` and `json`.
+`AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` support `text` and `json` for verbose dumps and summaries. Standalone reports also support `text`, `json`, `junit`, and `github` via `php artisan ai-evals:run --format=...`.
 
 ## Credentials And Safety
 
@@ -363,7 +383,7 @@ If eval discovery fails:
 
 If an eval has no expectations:
 
-- Add at least one of `expectContains()`, `expectExact()`, `expectJudge()`, or `expectJudgeAgainst()` before `run()`.
+- Add at least one expectation before `run()`, such as a deterministic expectation, `expect()`, `expectJudge()`, or `expectJudgeAgainst()`.
 
 If an agent cannot be resolved:
 

@@ -49,7 +49,7 @@ If you use a custom base test case, replace `Tests\TestCase` with your project t
 
 ## Optional: publish config
 
-If you want to customize defaults (format, retries, summary, judge agent), publish the config file:
+If you want to customize defaults (format, retries, summaries, report safety, standalone path, or judge agent), publish the config file:
 
 ```bash
 php artisan vendor:publish --tag=laravel-ai-evaluation-config

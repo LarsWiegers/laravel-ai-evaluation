@@ -213,3 +213,12 @@ Options:
 - `--filter=` runs eval cases whose names contain the filter.
 - `--format=` supports `text`, `json`, `junit`, and `github`.
 - `--output=` writes the formatted report to a file.
+
+For examples of each report format, see [Output formats](/output-formats).
+
+Formats:
+
+- `text` prints the human-readable terminal report and is the default.
+- `json` prints or writes the full standalone run report as JSON.
+- `junit` prints or writes JUnit XML for CI test report UIs.
+- `github` prints GitHub Actions `::error file=...,line=...::...` annotations for failed evals.

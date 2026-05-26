@@ -76,7 +76,9 @@ AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
-## Output and summary options
+## Output formats
+
+For a complete format-by-format walkthrough with sample output, see [Output formats](/output-formats).
 
 Text output is the default:
 
@@ -94,6 +96,40 @@ php artisan ai-evals:run --format=github
 
 Supported standalone report formats are `text`, `json`, `junit`, and `github`.
 
+Use `text` for local development and quick terminal feedback.
+
+```bash
+php artisan ai-evals:run --format=text
+```
+
+Use `json` when you want a complete machine-readable artifact for dashboards, debugging, or post-processing.
+
+```bash
+php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json
+```
+
+Use `junit` when your CI provider can ingest test reports. This works well with GitHub Actions test reporters, GitLab test reports, Jenkins, and Azure DevOps.
+
+```bash
+php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml
+```
+
+You can turn the JUnit XML into a local browser report with a viewer such as `xunit-viewer`:
+
+```bash
+npx xunit-viewer --results=storage/ai-evals/junit.xml --output=storage/ai-evals/junit.html --title="AI Eval Report"
+```
+
+Use `github` when running inside GitHub Actions and you want failed evals to appear as inline annotations.
+
+```bash
+php artisan ai-evals:run --format=github
+```
+
+`--output` writes the selected format to a file. When omitted, the formatted report is written to the console.
+
+## Report safety
+
 Use report config to avoid leaking full prompts or secrets into CI artifacts:
 
 ```dotenv
@@ -103,6 +139,10 @@ AI_EVAL_REPORT_MAX_INPUT_LENGTH=500
 AI_EVAL_REPORT_MAX_OUTPUT_LENGTH=2000
 AI_EVAL_REPORT_MAX_FAILURE_LENGTH=1000
 ```
+
+Inputs are omitted by default. Outputs are included by default but truncated and passed through the configured redaction patterns.
+
+## Verbose output and summaries
 
 The standalone runner supports verbose eval output format configuration:
 

@@ -68,6 +68,25 @@ Use `--format=github` when you want failures shown inline as GitHub annotations:
 php artisan ai-evals:run --format=github
 ```
 
+## Report formats
+
+The standalone runner supports four report formats.
+
+For complete examples of each format, see [Output formats](/output-formats).
+
+| Format | Best for | Example |
+| --- | --- | --- |
+| `text` | Local terminal runs | `php artisan ai-evals:run` |
+| `github` | Inline GitHub Actions annotations | `php artisan ai-evals:run --format=github` |
+| `junit` | CI test report UIs | `php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml` |
+| `json` | Artifacts, dashboards, post-processing | `php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json` |
+
+If you want a browser-readable HTML report from the JUnit file, use a JUnit/XUnit viewer in CI or locally:
+
+```bash
+npx xunit-viewer --results=storage/ai-evals/junit.xml --output=storage/ai-evals/junit.html --title="AI Eval Report"
+```
+
 ## Optional: run only matching cases
 
 ```bash
@@ -104,5 +123,5 @@ Keep live eval jobs serial unless each job has its own provider key and quota.
 - Use `AI_EVAL_REPORT_MAX_OUTPUT_LENGTH` and `AI_EVAL_REPORT_MAX_FAILURE_LENGTH` to keep reports concise.
 - Keep eval jobs serial to reduce `429` bursts when using a shared provider key.
 - Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
-- Standalone report formats support `text`, `json`, `junit`, and `github`.
+- Standalone report formats support `text`, `json`, `junit`, and `github`; see [Output formats](/output-formats) for examples.
 - If CI hits `429`/rate limits, follow the dedicated guide: [Dealing with rate limits](/dealing-with-rate-limits).
