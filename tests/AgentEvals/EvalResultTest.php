@@ -94,6 +94,34 @@ it('dump supports json output format', function () {
     expect($payload['passed'])->toBeTrue();
 });
 
+it('dump includes deterministic expectation results in json output', function () {
+    $result = new EvalResult(
+        name: 'deterministic-json-case',
+        input: 'question',
+        output: '{"status":"eligible"}',
+        failures: [],
+        expectationResults: [[
+            'type' => 'json_path',
+            'passed' => true,
+            'path' => 'status',
+            'expected' => 'eligible',
+            'actual' => 'eligible',
+            'reason' => 'JSON path "status" matched expected value "eligible".',
+        ]],
+    );
+
+    $lines = [];
+    $result->dump(function (string $line) use (&$lines): void {
+        $lines[] = $line;
+    }, 'json');
+
+    $payload = json_decode($lines[0], true);
+
+    expect($payload['expectation_results'][0]['type'])->toBe('json_path');
+    expect($payload['expectation_results'][0]['path'])->toBe('status');
+    expect($payload['expectation_results'][0]['actual'])->toBe('eligible');
+});
+
 it('dump rejects unsupported formats', function () {
     $result = new EvalResult(
         name: 'bad-format',

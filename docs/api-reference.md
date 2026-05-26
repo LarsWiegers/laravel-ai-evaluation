@@ -49,6 +49,71 @@ Requires the full output to match exactly after trimming both values.
 ->expectExact('OK')
 ```
 
+## `expectRegex()`
+
+Requires the output to match a regular expression.
+
+```php
+->expectRegex('/refunds? within \d+ days/i')
+```
+
+## `expectNotContains()`
+
+Requires one or more substrings to be absent from the agent output.
+
+```php
+->expectNotContains('always approved')
+->expectNotContains(['legal guarantee', 'always approved'])
+```
+
+Matching is case-sensitive.
+
+## `expectJson()`
+
+Requires the output to be valid JSON.
+
+```php
+->expectJson()
+```
+
+## `expectJsonPath()`
+
+Requires a JSON path to exist, or to equal an expected value when provided.
+
+```php
+->expectJsonPath('status')
+->expectJsonPath('status', 'eligible')
+->expectJsonPath('policy.days', 30)
+```
+
+Paths use dot notation and may include array indexes, such as `items.0.name`.
+
+## `expectLength()`
+
+Requires the output length to be within the provided bounds.
+
+```php
+->expectLength(min: 20)
+->expectLength(max: 500)
+->expectLength(min: 20, max: 500)
+```
+
+## `expectStartsWith()`
+
+Requires the output to start with a string.
+
+```php
+->expectStartsWith('{')
+```
+
+## `expectEndsWith()`
+
+Requires the output to end with a string.
+
+```php
+->expectEndsWith('}')
+```
+
 ## `expectJudge()`
 
 Scores the output with an LLM judge using criteria and an optional threshold.

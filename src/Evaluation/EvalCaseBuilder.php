@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation;
 
+use InvalidArgumentException;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 
 class EvalCaseBuilder
@@ -14,6 +15,11 @@ class EvalCaseBuilder
     protected array $contains = [];
 
     protected ?string $exact = null;
+
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $deterministicExpectations = [];
 
     /**
      * @var array<int, array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}>
@@ -70,6 +76,93 @@ class EvalCaseBuilder
         return $this;
     }
 
+    public function expectRegex(string $pattern): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'regex',
+            'pattern' => $pattern,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * @param  string|array<int, string>  $values
+     */
+    public function expectNotContains(string|array $values): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'not_contains',
+            'values' => is_array($values) ? $values : [$values],
+        ];
+
+        return $this;
+    }
+
+    public function expectJson(): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'json',
+        ];
+
+        return $this;
+    }
+
+    public function expectJsonPath(string $path, mixed $expected = null): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'json_path',
+            'path' => $path,
+            'expected' => $expected,
+            'has_expected' => func_num_args() >= 2,
+        ];
+
+        return $this;
+    }
+
+    public function expectLength(?int $min = null, ?int $max = null): self
+    {
+        if ($min === null && $max === null) {
+            throw new InvalidArgumentException('expectLength requires a minimum or maximum length.');
+        }
+
+        if (($min !== null && $min < 0) || ($max !== null && $max < 0)) {
+            throw new InvalidArgumentException('expectLength minimum and maximum must be zero or greater.');
+        }
+
+        if ($min !== null && $max !== null && $min > $max) {
+            throw new InvalidArgumentException('expectLength minimum cannot be greater than maximum.');
+        }
+
+        $this->deterministicExpectations[] = [
+            'type' => 'length',
+            'min' => $min,
+            'max' => $max,
+        ];
+
+        return $this;
+    }
+
+    public function expectStartsWith(string $value): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'starts_with',
+            'value' => $value,
+        ];
+
+        return $this;
+    }
+
+    public function expectEndsWith(string $value): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'ends_with',
+            'value' => $value,
+        ];
+
+        return $this;
+    }
+
     public function expectJudge(string $criteria, ?float $threshold = null, object|string|null $judge = null): self
     {
         $this->judgeExpectations[] = [
@@ -109,6 +202,7 @@ class EvalCaseBuilder
             exact: $this->exact,
             judgeExpectations: $this->judgeExpectations,
             location: $this->location ?? $this->resolveLocation(),
+            deterministicExpectations: $this->deterministicExpectations,
         );
     }
 

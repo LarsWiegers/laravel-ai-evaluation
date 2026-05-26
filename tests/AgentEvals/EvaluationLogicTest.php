@@ -96,6 +96,93 @@ it('builder combines contains expectations from string and array', function () {
     expect($result->passed())->toBeTrue();
 });
 
+it('builder supports passing deterministic expectations', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return '{"status":"eligible","policy":{"days":30},"items":[{"name":"refund"}],"message":"Refunds within 30 days."}';
+        }
+    });
+
+    $result = $builder
+        ->name('deterministic-pass')
+        ->input('ignored')
+        ->expectRegex('/refunds? within \d+ days/i')
+        ->expectNotContains(['legal guarantee', 'always approved'])
+        ->expectJson()
+        ->expectJsonPath('status', 'eligible')
+        ->expectJsonPath('policy.days', 30)
+        ->expectJsonPath('items.0.name')
+        ->expectLength(min: 20, max: 200)
+        ->expectStartsWith('{')
+        ->expectEndsWith('}')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect(array_column($result->expectationResults(), 'type'))->toBe([
+        'regex',
+        'not_contains',
+        'json',
+        'json_path',
+        'json_path',
+        'json_path',
+        'length',
+        'starts_with',
+        'ends_with',
+    ]);
+});
+
+it('builder reports failing deterministic expectations with clear messages', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Legal guarantee is always approved.';
+        }
+    });
+
+    $result = $builder
+        ->name('deterministic-fail')
+        ->input('ignored')
+        ->expectRegex('/refunds? within \d+ days/i')
+        ->expectNotContains(['Legal guarantee', 'always approved'])
+        ->expectJson()
+        ->expectJsonPath('status', 'eligible')
+        ->expectLength(max: 10)
+        ->expectStartsWith('{')
+        ->expectEndsWith('}')
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures())->toHaveCount(7);
+    expect($result->failures()[0])->toContain('Output did not match regex pattern');
+    expect($result->failures()[1])->toContain('Output contained forbidden substring(s): Legal guarantee, always approved');
+    expect($result->failures()[2])->toContain('Output is not valid JSON');
+    expect($result->failures()[3])->toContain('JSON path "status" could not be checked');
+    expect($result->failures()[4])->toContain('Expected output length to be at most 10 characters');
+    expect($result->failures()[5])->toContain('Expected output to start with "{"');
+    expect($result->failures()[6])->toContain('Expected output to end with "}"');
+});
+
+it('json path expectations distinguish missing paths from expected null values', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return '{"status":null}';
+        }
+    });
+
+    $result = $builder
+        ->name('json-path-null')
+        ->input('ignored')
+        ->expectJsonPath('status', null)
+        ->expectJsonPath('missing')
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->expectationResults()[0]['passed'])->toBeTrue();
+    expect($result->expectationResults()[1]['reason'])->toBe('JSON path "missing" was not found.');
+});
+
 it('builder captures test file location on result', function () {
     $builder = new EvalCaseBuilder(new class {
         public function prompt(string $prompt): string
