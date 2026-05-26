@@ -291,7 +291,7 @@ class EvalCaseBuilder
                 continue;
             }
 
-            if (! str_contains($file, '/tests/')) {
+            if (! str_contains($file, '/tests/') && ! str_contains($file, '/workbench/evals/') && ! str_ends_with($file, '.eval.php')) {
                 continue;
             }
 

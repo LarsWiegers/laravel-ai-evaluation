@@ -33,13 +33,39 @@ jobs:
       - name: Run AI evals
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          AI_EVAL_FORMAT: json
           AI_EVAL_RETRIES: 1
           AI_EVAL_RETRY_SLEEP_MS: 250
-          AI_EVAL_SUMMARY: true
-          AI_EVAL_SUMMARY_FORMAT: json
-          AI_EVAL_SUMMARY_CURRENCY: USD
-        run: php artisan ai-evals:run
+          AI_EVAL_REPORT_INCLUDE_INPUT: false
+          AI_EVAL_REPORT_MAX_OUTPUT_LENGTH: 2000
+        run: php artisan ai-evals:run --format=github
+```
+
+## Upload report artifacts
+
+For CI test report UIs and debugging artifacts, write JUnit and JSON reports to files and upload them.
+
+```yaml
+      - name: Run AI evals with reports
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_EVAL_REPORT_INCLUDE_INPUT: false
+          AI_EVAL_REPORT_MAX_OUTPUT_LENGTH: 2000
+        run: |
+          php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml
+          php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json
+
+      - name: Upload AI eval reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-eval-reports
+          path: storage/ai-evals
+```
+
+Use `--format=github` when you want failures shown inline as GitHub annotations:
+
+```bash
+php artisan ai-evals:run --format=github
 ```
 
 ## Optional: run only matching cases
@@ -74,7 +100,9 @@ Keep live eval jobs serial unless each job has its own provider key and quota.
 - The command exits non-zero on failure, so CI will fail automatically.
 - Keep API keys in CI secrets, never in the repository.
 - Prefer a dedicated API key for eval jobs (separate from production) with limited quota/budget.
+- Keep `AI_EVAL_REPORT_INCLUDE_INPUT=false` unless prompts are safe to publish as CI artifacts.
+- Use `AI_EVAL_REPORT_MAX_OUTPUT_LENGTH` and `AI_EVAL_REPORT_MAX_FAILURE_LENGTH` to keep reports concise.
 - Keep eval jobs serial to reduce `429` bursts when using a shared provider key.
 - Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
-- `AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` both support `text` and `json`.
+- Standalone report formats support `text`, `json`, `junit`, and `github`.
 - If CI hits `429`/rate limits, follow the dedicated guide: [Dealing with rate limits](/dealing-with-rate-limits).

@@ -169,6 +169,135 @@ PHP,
     expect($output)->toContain('Agent says hello world');
 });
 
+it('prints standalone eval results as json', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    writeStandaloneReportFixture($path);
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'json');
+
+    $payload = json_decode(implode('', $lines), true);
+
+    expect($exitCode)->toBe(1);
+    expect($payload['type'])->toBe('ai_eval_standalone_report');
+    expect($payload['total'])->toBe(2);
+    expect($payload['passed'])->toBe(1);
+    expect($payload['failed'])->toBe(1);
+    expect($payload['cases'][1]['location'])->toContain($path.'/reports.eval.php');
+    expect($payload['cases'][0]['input'])->toBeNull();
+    expect($payload['cases'][1]['failures'][0])->toContain('Missing required substring');
+});
+
+it('prints standalone eval results as junit xml', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    writeStandaloneReportFixture($path);
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'junit');
+
+    $output = implode('', $lines);
+
+    expect($exitCode)->toBe(1);
+    expect($output)->toContain('<testsuites tests="2" failures="1" errors="0">');
+    expect($output)->toContain('<testcase name="passing-case" classname="AI Evals"');
+    expect($output)->toContain('file="'.$path.'/reports.eval.php"');
+    expect($output)->toContain('<failure message="Missing required substring');
+});
+
+it('prints standalone eval failures as github annotations', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    writeStandaloneReportFixture($path);
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'github');
+
+    $output = implode('', $lines);
+
+    expect($exitCode)->toBe(1);
+    expect($output)->toContain('::error file=tests/tmp-evals/');
+    expect($output)->toContain('title=AI eval failed%3A failing-case');
+    expect($output)->toContain('::Missing required substring');
+});
+
+it('writes standalone eval report to an output file', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+    $outputPath = "{$path}/reports/results.json";
+
+    writeStandaloneReportFixture($path);
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'json', $outputPath);
+
+    $payload = json_decode((string) file_get_contents(base_path($outputPath)), true);
+
+    expect($exitCode)->toBe(1);
+    expect($lines)->toBe([]);
+    expect($payload['total'])->toBe(2);
+});
+
+it('omits inputs and truncates and redacts report output', function () {
+    config()->set('laravel-ai-evaluation.standalone.report.include_input', false);
+    config()->set('laravel-ai-evaluation.standalone.report.include_output', true);
+    config()->set('laravel-ai-evaluation.standalone.report.max_output_length', 12);
+    config()->set('laravel-ai-evaluation.standalone.report.redact_patterns', ['/secret=[^\s]+/']);
+
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    file_put_contents(
+        base_path("{$path}/redacted.eval.php"),
+        <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('redacted-case', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'secret=super-secret-token visible tail';
+            }
+        })
+            ->input('private prompt text')
+            ->expectContains('missing')
+            ->run();
+    });
+};
+PHP,
+    );
+
+    $lines = [];
+    $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'json');
+
+    $payload = json_decode(implode('', $lines), true);
+
+    expect($payload['cases'][0]['input'])->toBeNull();
+    expect($payload['cases'][0]['output'])->toContain('[REDACTED]');
+    expect($payload['cases'][0]['output'])->toContain('[truncated]');
+    expect($payload['cases'][0]['output'])->not->toContain('super-secret-token');
+});
+
 function createStandaloneEvalDirectory(): string
 {
     static $registered = false;
@@ -194,6 +323,47 @@ function createStandaloneEvalDirectory(): string
     $directories[] = $absolutePath;
 
     return $relativePath;
+}
+
+function writeStandaloneReportFixture(string $path): void
+{
+    file_put_contents(
+        base_path("{$path}/reports.eval.php"),
+        <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('passing-case', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'alpha';
+            }
+        })
+            ->input('private passing prompt')
+            ->expectContains('alpha')
+            ->run();
+    });
+
+    $suite->eval('failing-case', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'Agent says hello world';
+            }
+        })
+            ->input('private failing prompt')
+            ->expectContains('refund')
+            ->run();
+    });
+};
+PHP,
+    );
 }
 
 function deleteDirectory(string $directory): void

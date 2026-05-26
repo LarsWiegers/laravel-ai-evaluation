@@ -39,6 +39,30 @@ jobs:
       - name: Execute tests
         run: composer test
 
+      - name: Test GitHub annotation report format
+        shell: bash
+        run: |
+          marker="$(uuidgen)"
+          echo "::stop-commands::$marker"
+
+          set +e
+          output=$(composer exec -- testbench ai-evals:run ../../../../workbench/evals --format=github 2>&1)
+          status=$?
+          set -e
+
+          printf '%s\n' "$output"
+          echo "::$marker::"
+
+          if [ "$status" -ne 1 ]; then
+            echo "Expected GitHub report fixture to exit with 1, got $status"
+            exit 1
+          fi
+
+          if [[ "$output" != *"::error file=workbench/evals/reporting.eval.php,line=35"* ]]; then
+            echo "Expected GitHub annotation output was not found"
+            exit 1
+          fi
+
   docs-build:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')

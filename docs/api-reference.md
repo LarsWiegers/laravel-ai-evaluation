@@ -199,3 +199,17 @@ Useful methods on the result object:
 - `output()` returns the normalized agent output.
 - `expectationResults()` returns details for each expectation.
 - `usage()` returns token and cost usage when the provider response exposes it.
+
+## `php artisan ai-evals:run`
+
+Runs standalone eval files.
+
+```bash
+php artisan ai-evals:run {path?} --filter="refund" --format=json --output=storage/ai-evals/results.json
+```
+
+Options:
+
+- `--filter=` runs eval cases whose names contain the filter.
+- `--format=` supports `text`, `json`, `junit`, and `github`.
+- `--output=` writes the formatted report to a file.

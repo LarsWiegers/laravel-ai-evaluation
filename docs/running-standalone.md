@@ -78,6 +78,32 @@ AI_EVAL_SUMMARY_CURRENCY=USD
 
 ## Output and summary options
 
+Text output is the default:
+
+```bash
+php artisan ai-evals:run
+```
+
+For CI artifacts and dashboards, write machine-readable reports:
+
+```bash
+php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json
+php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml
+php artisan ai-evals:run --format=github
+```
+
+Supported standalone report formats are `text`, `json`, `junit`, and `github`.
+
+Use report config to avoid leaking full prompts or secrets into CI artifacts:
+
+```dotenv
+AI_EVAL_REPORT_INCLUDE_INPUT=false
+AI_EVAL_REPORT_INCLUDE_OUTPUT=true
+AI_EVAL_REPORT_MAX_INPUT_LENGTH=500
+AI_EVAL_REPORT_MAX_OUTPUT_LENGTH=2000
+AI_EVAL_REPORT_MAX_FAILURE_LENGTH=1000
+```
+
 The standalone runner supports verbose eval output format configuration:
 
 ```dotenv
@@ -92,7 +118,7 @@ AI_EVAL_RETRIES=1
 AI_EVAL_RETRY_SLEEP_MS=250
 ```
 
-Supported formats are `text` and `json`.
+Verbose per-eval dump formats are `text` and `json`.
 
 You can configure end-of-run summaries with:
 
