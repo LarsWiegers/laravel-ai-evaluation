@@ -114,6 +114,18 @@ Requires the output to end with a string.
 ->expectEndsWith('}')
 ```
 
+## `expect()`
+
+Adds a custom expectation. Accepts closures, expectation objects, invokable objects, or container-resolvable class strings.
+
+```php
+->expect(fn (string $output): bool => str_contains($output, '30 days'))
+->expect(new RefundPolicyExpectation)
+->expect(RefundPolicyExpectation::class)
+```
+
+Reusable expectation classes may implement `LaravelAIEvaluation\Contracts\EvalExpectation` and return `LaravelAIEvaluation\Evaluation\ExpectationResult`.
+
 ## `expectJudge()`
 
 Scores the output with an LLM judge using criteria and an optional threshold.

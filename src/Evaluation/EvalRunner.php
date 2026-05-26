@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation;
 
+use Closure;
+use LaravelAIEvaluation\Contracts\EvalExpectation;
 use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
@@ -11,6 +13,8 @@ use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
 use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
 use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
+use ReflectionFunction;
+use ReflectionMethod;
 use RuntimeException;
 use Throwable;
 
@@ -42,6 +46,7 @@ class EvalRunner
      * @param  array<int, string>  $contains
      * @param  array<int, array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}>  $judgeExpectations
      * @param  array<int, array<string, mixed>>  $deterministicExpectations
+     * @param  array<int, callable|object|string>  $customExpectations
      */
     public function run(
         object|string $agent,
@@ -52,10 +57,11 @@ class EvalRunner
         array $judgeExpectations = [],
         ?string $location = null,
         array $deterministicExpectations = [],
+        array $customExpectations = [],
     ): EvalResult {
         $name = $this->resolveName($name);
 
-        if ($contains === [] && $exact === null && $judgeExpectations === [] && $deterministicExpectations === []) {
+        if ($contains === [] && $exact === null && $judgeExpectations === [] && $deterministicExpectations === [] && $customExpectations === []) {
             throw new RuntimeException("AI eval '{$name}' must define at least one expectation.");
         }
 
@@ -109,6 +115,16 @@ class EvalRunner
 
             if (! $result['passed']) {
                 $failures[] = $result['reason'];
+            }
+        }
+
+        foreach ($customExpectations as $expectation) {
+            $result = $this->scoreCustomExpectation($input, $output, $expectation);
+
+            $expectationResults[] = $result;
+
+            if (! $result['passed']) {
+                $failures[] = sprintf('Custom expectation "%s" failed: %s', $result['name'], $result['reason']);
             }
         }
 
@@ -197,6 +213,142 @@ class EvalRunner
                 'reason' => sprintf('Unknown deterministic expectation type "%s".', (string) ($expectation['type'] ?? 'unknown')),
             ],
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreCustomExpectation(string $input, string $output, callable|object|string $expectation): array
+    {
+        $name = $this->customExpectationName($expectation);
+
+        try {
+            $resolvedExpectation = $this->resolveCustomExpectation($expectation);
+            $rawResult = $this->evaluateCustomExpectation($resolvedExpectation, $input, $output);
+
+            return $this->normalizeCustomExpectationResult($rawResult, $name);
+        } catch (Throwable $exception) {
+            return [
+                'type' => 'custom',
+                'passed' => false,
+                'name' => $name,
+                'reason' => sprintf('Threw %s: %s', $exception::class, $exception->getMessage()),
+                'metadata' => [
+                    'exception_class' => $exception::class,
+                ],
+            ];
+        }
+    }
+
+    protected function resolveCustomExpectation(callable|object|string $expectation): callable|object|string
+    {
+        if (is_string($expectation) && class_exists($expectation)) {
+            return function_exists('app') ? app($expectation) : new $expectation;
+        }
+
+        return $expectation;
+    }
+
+    protected function evaluateCustomExpectation(callable|object|string $expectation, string $input, string $output): mixed
+    {
+        if ($expectation instanceof EvalExpectation) {
+            return $expectation->evaluate($input, $output);
+        }
+
+        if (is_callable($expectation)) {
+            return $this->invokeCustomCallable($expectation, $input, $output);
+        }
+
+        throw new RuntimeException(sprintf(
+            'Custom expectation must implement %s or be callable.',
+            EvalExpectation::class,
+        ));
+    }
+
+    protected function invokeCustomCallable(callable $expectation, string $input, string $output): mixed
+    {
+        $parameterCount = $this->callableParameterCount($expectation);
+
+        if ($parameterCount <= 1) {
+            return $expectation($output);
+        }
+
+        return $expectation($output, $input);
+    }
+
+    protected function callableParameterCount(callable $expectation): int
+    {
+        if (is_array($expectation)) {
+            return (new ReflectionMethod($expectation[0], (string) $expectation[1]))->getNumberOfParameters();
+        }
+
+        if (is_object($expectation) && ! $expectation instanceof Closure) {
+            return (new ReflectionMethod($expectation, '__invoke'))->getNumberOfParameters();
+        }
+
+        return (new ReflectionFunction($expectation))->getNumberOfParameters();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function normalizeCustomExpectationResult(mixed $rawResult, string $name): array
+    {
+        if ($rawResult instanceof ExpectationResult) {
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                ...$rawResult->toArray(),
+            ];
+        }
+
+        if (is_bool($rawResult)) {
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                'passed' => $rawResult,
+                'reason' => $rawResult ? 'Returned true.' : 'Returned false.',
+            ];
+        }
+
+        if (is_array($rawResult)) {
+            if (! array_key_exists('passed', $rawResult)) {
+                throw new RuntimeException('Custom expectation array results must include a "passed" key.');
+            }
+
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                'passed' => (bool) $rawResult['passed'],
+                'reason' => isset($rawResult['reason']) && is_string($rawResult['reason'])
+                    ? $rawResult['reason']
+                    : ((bool) $rawResult['passed'] ? 'Custom expectation passed.' : 'Custom expectation failed.'),
+                ...array_intersect_key($rawResult, array_flip(['score', 'metadata'])),
+            ];
+        }
+
+        throw new RuntimeException(sprintf(
+            'Custom expectation returned unsupported result type %s. Return %s, bool, or an array with a passed key.',
+            get_debug_type($rawResult),
+            ExpectationResult::class,
+        ));
+    }
+
+    protected function customExpectationName(callable|object|string $expectation): string
+    {
+        if ($expectation instanceof Closure) {
+            return 'Closure';
+        }
+
+        if (is_object($expectation)) {
+            return $expectation::class;
+        }
+
+        if (is_string($expectation)) {
+            return $expectation;
+        }
+
+        return 'custom';
     }
 
     /**

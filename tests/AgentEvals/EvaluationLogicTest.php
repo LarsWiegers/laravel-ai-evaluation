@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use LaravelAIEvaluation\Contracts\EvalExpectation;
 use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
 use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\ExpectationResult;
 use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
 use LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
@@ -181,6 +183,107 @@ it('json path expectations distinguish missing paths from expected null values',
     expect($result->passed())->toBeFalse();
     expect($result->expectationResults()[0]['passed'])->toBeTrue();
     expect($result->expectationResults()[1]['reason'])->toBe('JSON path "missing" was not found.');
+});
+
+it('builder supports passing custom closure expectations', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-closure-pass')
+        ->input('ignored')
+        ->expect(fn (string $output): bool => str_contains($output, '30 days'))
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => 'Closure',
+        'passed' => true,
+        'reason' => 'Returned true.',
+    ]);
+});
+
+it('builder supports failing custom expectation contract objects', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds may be available.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-contract-fail')
+        ->input('ignored')
+        ->expect(new RefundPolicyExpectation)
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures()[0])->toContain('Custom expectation "RefundPolicyExpectation" failed: Missing 30-day refund window.');
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => RefundPolicyExpectation::class,
+        'passed' => false,
+        'reason' => 'Missing 30-day refund window.',
+        'score' => 0.25,
+        'metadata' => ['required_window' => '30 days'],
+    ]);
+});
+
+it('builder resolves invokable custom expectation class strings from the container', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-container-pass')
+        ->input('ignored')
+        ->expect(ContainerResolvedRefundExpectation::class)
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => ContainerResolvedRefundExpectation::class,
+        'passed' => true,
+        'reason' => 'Output includes refund policy window.',
+        'score' => 1.0,
+        'metadata' => ['days' => 30],
+    ]);
+});
+
+it('builder records custom expectation exceptions as failures', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-exception-fail')
+        ->input('ignored')
+        ->expect(function (string $output): bool {
+            throw new RuntimeException('custom scorer exploded');
+        })
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => 'Closure',
+        'passed' => false,
+        'metadata' => ['exception_class' => RuntimeException::class],
+    ]);
+    expect($result->expectationResults()[0]['reason'])->toContain('custom scorer exploded');
+    expect($result->failures()[0])->toContain('Custom expectation "Closure" failed: Threw RuntimeException: custom scorer exploded');
 });
 
 it('builder captures test file location on result', function () {
@@ -556,3 +659,43 @@ it('retries transient judge failures when configured', function () {
 });
 
 class InlineJudgeAgent {}
+
+class RefundPolicyExpectation implements EvalExpectation
+{
+    public function evaluate(string $input, string $output): ExpectationResult
+    {
+        if (str_contains($output, '30 days')) {
+            return ExpectationResult::pass('Output includes 30-day refund window.', 1.0, ['required_window' => '30 days']);
+        }
+
+        return ExpectationResult::fail('Missing 30-day refund window.', 0.25, ['required_window' => '30 days']);
+    }
+}
+
+class RefundPolicyWindow
+{
+    public function days(): int
+    {
+        return 30;
+    }
+}
+
+class ContainerResolvedRefundExpectation
+{
+    public function __construct(protected RefundPolicyWindow $window) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __invoke(string $output): array
+    {
+        $expected = sprintf('%d days', $this->window->days());
+
+        return [
+            'passed' => str_contains($output, $expected),
+            'reason' => 'Output includes refund policy window.',
+            'score' => 1.0,
+            'metadata' => ['days' => $this->window->days()],
+        ];
+    }
+}

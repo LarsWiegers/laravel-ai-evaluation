@@ -22,6 +22,11 @@ class EvalCaseBuilder
     protected array $deterministicExpectations = [];
 
     /**
+     * @var array<int, callable|object|string>
+     */
+    protected array $customExpectations = [];
+
+    /**
      * @var array<int, array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}>
      */
     protected array $judgeExpectations = [];
@@ -163,6 +168,13 @@ class EvalCaseBuilder
         return $this;
     }
 
+    public function expect(callable|object|string $expectation): self
+    {
+        $this->customExpectations[] = $expectation;
+
+        return $this;
+    }
+
     public function expectJudge(string $criteria, ?float $threshold = null, object|string|null $judge = null): self
     {
         $this->judgeExpectations[] = [
@@ -203,6 +215,7 @@ class EvalCaseBuilder
             judgeExpectations: $this->judgeExpectations,
             location: $this->location ?? $this->resolveLocation(),
             deterministicExpectations: $this->deterministicExpectations,
+            customExpectations: $this->customExpectations,
         );
     }
 
