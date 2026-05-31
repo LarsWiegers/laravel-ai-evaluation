@@ -32,32 +32,32 @@ it('accepts laravel ai agent contract implementations', function () {
             return 'instructions';
         }
 
-        public function prompt(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null): AgentResponse
+        public function prompt(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): AgentResponse
         {
             throw new RuntimeException('not called');
         }
 
-        public function stream(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+        public function stream(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): StreamableAgentResponse
         {
             throw new RuntimeException('not called');
         }
 
-        public function queue(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
+        public function queue(string $prompt, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): QueuedAgentResponse
         {
             throw new RuntimeException('not called');
         }
 
-        public function broadcast(string $prompt, Channel|array $channels, array $attachments = [], bool $now = false, Lab|array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+        public function broadcast(string $prompt, Channel|array $channels, array $attachments = [], bool $now = false, Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): StreamableAgentResponse
         {
             throw new RuntimeException('not called');
         }
 
-        public function broadcastNow(string $prompt, Channel|array $channels, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+        public function broadcastNow(string $prompt, Channel|array $channels, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): StreamableAgentResponse
         {
             throw new RuntimeException('not called');
         }
 
-        public function broadcastOnQueue(string $prompt, Channel|array $channels, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
+        public function broadcastOnQueue(string $prompt, Channel|array $channels, array $attachments = [], Lab|array|string|null $provider = null, ?string $model = null, ?int $timeout = null): QueuedAgentResponse
         {
             throw new RuntimeException('not called');
         }
