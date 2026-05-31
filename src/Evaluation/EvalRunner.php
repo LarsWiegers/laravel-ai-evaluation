@@ -67,9 +67,16 @@ class EvalRunner
 
         $resolvedAgent = $this->targetResolver->resolve($agent, 'agent', $name);
 
-        $response = $this->promptAgent($resolvedAgent, $input, $name);
+        ToolCallRecorder::start();
+
+        try {
+            $response = $this->promptAgent($resolvedAgent, $input, $name);
+        } finally {
+            $recordedToolCalls = ToolCallRecorder::stop();
+        }
 
         $usage = $this->responseNormalizer->extractUsage($response);
+        $toolCalls = array_merge($this->responseNormalizer->extractToolCalls($response), $recordedToolCalls);
         $output = $this->responseNormalizer->stringifyResponse($response, 'AI agent');
 
         $failures = [];
@@ -109,7 +116,7 @@ class EvalRunner
         }
 
         foreach ($deterministicExpectations as $expectation) {
-            $result = $this->scoreDeterministicExpectation($output, $expectation);
+            $result = $this->scoreDeterministicExpectation($output, $expectation, $toolCalls);
 
             $expectationResults[] = $result;
 
@@ -158,7 +165,7 @@ class EvalRunner
             }
         }
 
-        $result = new EvalResult($name, $input, $output, $failures, $expectationResults, $location, $usage);
+        $result = new EvalResult($name, $input, $output, $failures, $expectationResults, $location, $usage, $toolCalls);
 
         $this->runSummary->record($result);
 
@@ -188,7 +195,7 @@ class EvalRunner
      * @param  array<string, mixed>  $expectation
      * @return array<string, mixed>
      */
-    protected function scoreDeterministicExpectation(string $output, array $expectation): array
+    protected function scoreDeterministicExpectation(string $output, array $expectation, array $toolCalls = []): array
     {
         return match ($expectation['type'] ?? null) {
             'regex' => $this->scoreRegexExpectation($output, (string) ($expectation['pattern'] ?? '')),
@@ -207,12 +214,135 @@ class EvalRunner
             ),
             'starts_with' => $this->scoreStartsWithExpectation($output, (string) ($expectation['value'] ?? '')),
             'ends_with' => $this->scoreEndsWithExpectation($output, (string) ($expectation['value'] ?? '')),
+            'tool_called' => $this->scoreToolCalledExpectation($toolCalls, (string) ($expectation['name'] ?? '')),
+            'tool_not_called' => $this->scoreToolNotCalledExpectation($toolCalls, (string) ($expectation['name'] ?? '')),
+            'tool_called_with' => $this->scoreToolCalledWithExpectation(
+                toolCalls: $toolCalls,
+                name: (string) ($expectation['name'] ?? ''),
+                arguments: is_array($expectation['arguments'] ?? null) ? $expectation['arguments'] : [],
+            ),
             default => [
                 'type' => (string) ($expectation['type'] ?? 'unknown'),
                 'passed' => false,
                 'reason' => sprintf('Unknown deterministic expectation type "%s".', (string) ($expectation['type'] ?? 'unknown')),
             ],
         };
+    }
+
+    /**
+     * @param  array<int, ToolCall>  $toolCalls
+     * @return array<string, mixed>
+     */
+    protected function scoreToolCalledExpectation(array $toolCalls, string $name): array
+    {
+        $passed = $this->toolCallNames($toolCalls, $name) !== [];
+
+        return [
+            'type' => 'tool_called',
+            'passed' => $passed,
+            'tool' => $name,
+            'reason' => $passed
+                ? sprintf('Tool "%s" was called.', $name)
+                : sprintf('Expected tool "%s" to be called, but observed tool calls were: %s.', $name, $this->formatObservedToolCalls($toolCalls)),
+        ];
+    }
+
+    /**
+     * @param  array<int, ToolCall>  $toolCalls
+     * @return array<string, mixed>
+     */
+    protected function scoreToolNotCalledExpectation(array $toolCalls, string $name): array
+    {
+        $matching = $this->toolCallNames($toolCalls, $name);
+        $passed = $matching === [];
+
+        return [
+            'type' => 'tool_not_called',
+            'passed' => $passed,
+            'tool' => $name,
+            'reason' => $passed
+                ? sprintf('Tool "%s" was not called.', $name)
+                : sprintf('Expected tool "%s" not to be called, but it was called %d time(s).', $name, count($matching)),
+        ];
+    }
+
+    /**
+     * @param  array<int, ToolCall>  $toolCalls
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    protected function scoreToolCalledWithExpectation(array $toolCalls, string $name, array $arguments): array
+    {
+        foreach ($toolCalls as $toolCall) {
+            if ($toolCall->name === $name && $this->arrayContainsSubset($toolCall->arguments, $arguments)) {
+                return [
+                    'type' => 'tool_called_with',
+                    'passed' => true,
+                    'tool' => $name,
+                    'arguments' => $arguments,
+                    'reason' => sprintf('Tool "%s" was called with expected arguments.', $name),
+                ];
+            }
+        }
+
+        return [
+            'type' => 'tool_called_with',
+            'passed' => false,
+            'tool' => $name,
+            'arguments' => $arguments,
+            'reason' => sprintf('Expected tool "%s" to be called with arguments %s, but observed tool calls were: %s.', $name, $this->formatValue($arguments), $this->formatObservedToolCalls($toolCalls)),
+        ];
+    }
+
+    /**
+     * @param  array<int, ToolCall>  $toolCalls
+     * @return array<int, ToolCall>
+     */
+    protected function toolCallNames(array $toolCalls, string $name): array
+    {
+        return array_values(array_filter($toolCalls, static fn (ToolCall $toolCall): bool => $toolCall->name === $name));
+    }
+
+    /**
+     * @param  array<string, mixed>  $actual
+     * @param  array<string, mixed>  $expected
+     */
+    protected function arrayContainsSubset(array $actual, array $expected): bool
+    {
+        foreach ($expected as $key => $value) {
+            if (! array_key_exists($key, $actual)) {
+                return false;
+            }
+
+            if (is_array($value)) {
+                if (! is_array($actual[$key]) || ! $this->arrayContainsSubset($actual[$key], $value)) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if ($actual[$key] !== $value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<int, ToolCall>  $toolCalls
+     */
+    protected function formatObservedToolCalls(array $toolCalls): string
+    {
+        if ($toolCalls === []) {
+            return 'none';
+        }
+
+        return $this->formatValue(array_map(static fn (ToolCall $toolCall): array => [
+            'name' => $toolCall->name,
+            'arguments' => $toolCall->arguments,
+        ], $toolCalls));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace LaravelAIEvaluation;
 
 use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
 use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\ToolCallRecorder;
 
 final class AIEval
 {
@@ -14,5 +15,13 @@ final class AIEval
         $runner = function_exists('app') ? app(EvalRunner::class) : new EvalRunner;
 
         return new EvalCaseBuilder($agent, $runner);
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    public static function recordToolCall(string $name, array $arguments = [], ?string $id = null): void
+    {
+        ToolCallRecorder::record($name, $arguments, $id);
     }
 }

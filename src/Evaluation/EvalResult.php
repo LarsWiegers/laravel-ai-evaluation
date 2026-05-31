@@ -11,6 +11,7 @@ class EvalResult
     /**
      * @param  array<int, string>  $failures
      * @param  array<int, array<string, mixed>>  $expectationResults
+     * @param  array<int, ToolCall>  $toolCalls
      */
     public function __construct(
         protected string $name,
@@ -20,6 +21,7 @@ class EvalResult
         protected array $expectationResults = [],
         protected ?string $location = null,
         protected array $usage = [],
+        protected array $toolCalls = [],
     ) {
     }
 
@@ -60,6 +62,14 @@ class EvalResult
     public function usage(): array
     {
         return $this->usage;
+    }
+
+    /**
+     * @return array<int, ToolCall>
+     */
+    public function toolCalls(): array
+    {
+        return $this->toolCalls;
     }
 
     public function assertPasses(): self
@@ -145,6 +155,7 @@ class EvalResult
             'failures' => $this->failures,
             'expectation_results' => $this->expectationResults,
             'usage' => $this->usage,
+            'tool_calls' => array_map(static fn (ToolCall $toolCall): array => $toolCall->toArray(), $this->toolCalls),
         ];
     }
 
