@@ -29,6 +29,6 @@ it('answers refund policy questions', function () {
 });
 ```
 
-For installation and usage instructions, see the docs:
+For installation, expectations, standalone reports, and CI output formats, see the docs:
 
 - [Documentation](https://ai-evals.larswiegers.nl/)

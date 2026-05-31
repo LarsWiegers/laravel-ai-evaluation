@@ -49,6 +49,118 @@ Requires the full output to match exactly after trimming both values.
 ->expectExact('OK')
 ```
 
+## `expectRegex()`
+
+Requires the output to match a regular expression.
+
+```php
+->expectRegex('/refunds? within \d+ days/i')
+```
+
+## `expectNotContains()`
+
+Requires one or more substrings to be absent from the agent output.
+
+```php
+->expectNotContains('always approved')
+->expectNotContains(['legal guarantee', 'always approved'])
+```
+
+Matching is case-sensitive.
+
+## `expectJson()`
+
+Requires the output to be valid JSON.
+
+```php
+->expectJson()
+```
+
+## `expectJsonPath()`
+
+Requires a JSON path to exist, or to equal an expected value when provided.
+
+```php
+->expectJsonPath('status')
+->expectJsonPath('status', 'eligible')
+->expectJsonPath('policy.days', 30)
+```
+
+Paths use dot notation and may include array indexes, such as `items.0.name`.
+
+## `expectLength()`
+
+Requires the output length to be within the provided bounds.
+
+```php
+->expectLength(min: 20)
+->expectLength(max: 500)
+->expectLength(min: 20, max: 500)
+```
+
+## `expectStartsWith()`
+
+Requires the output to start with a string.
+
+```php
+->expectStartsWith('{')
+```
+
+## `expectEndsWith()`
+
+Requires the output to end with a string.
+
+```php
+->expectEndsWith('}')
+```
+
+## `expect()`
+
+Adds a custom expectation. Accepts closures, expectation objects, invokable objects, or container-resolvable class strings.
+
+```php
+->expect(fn (string $output): bool => str_contains($output, '30 days'))
+->expect(new RefundPolicyExpectation)
+->expect(RefundPolicyExpectation::class)
+```
+
+Reusable expectation classes may implement `LaravelAIEvaluation\Contracts\EvalExpectation` and return `LaravelAIEvaluation\Evaluation\ExpectationResult`.
+
+## `dataset()`
+
+Runs the builder once for each row in a JSON, PHP, or CSV dataset.
+
+```php
+->dataset('tests/AgentEvals/datasets/refunds.json')
+->inputColumn('input')
+->expectContainsFrom('required_terms')
+->expectNotContainsFrom('forbidden_terms')
+```
+
+Dataset rows should be JSON objects. The default input column is `input`, and the default row name column is `name`.
+
+PHP datasets should return the same row array shape from a PHP file, similar to Pest dataset files.
+
+CSV datasets should include a header row. CSV cell values are strings.
+
+Column paths support dot notation.
+
+## `conversation()`
+
+Starts a multi-turn conversation eval. The transcript is flattened into one prompt and the next assistant response is evaluated.
+
+```php
+->conversation()
+->user('I bought this last week.')
+->assistantShouldContain('order number')
+->user('The order is #123.')
+->expectContains('refund')
+```
+
+Conversation evals also support datasets with `dataset()`, `turnsColumn()`, `inputColumn()`, `expectContainsFrom()`, and `expectNotContainsFrom()`.
+
+See [Conversation evals](/conversation-evals) for examples and limitations.
+
 ## `expectJudge()`
 
 Scores the output with an LLM judge using criteria and an optional threshold.
@@ -95,6 +207,8 @@ $result = AIEval::agent(SupportAgent::class)
 
 At least one expectation is required.
 
+For dataset evals, `run()` returns a dataset result containing one `EvalResult` per row.
+
 ## `assertPasses()`
 
 Fails the current Pest/PHPUnit test, or throws a runtime exception outside PHPUnit, if the eval failed.
@@ -122,3 +236,26 @@ Useful methods on the result object:
 - `output()` returns the normalized agent output.
 - `expectationResults()` returns details for each expectation.
 - `usage()` returns token and cost usage when the provider response exposes it.
+
+## `php artisan ai-evals:run`
+
+Runs standalone eval files.
+
+```bash
+php artisan ai-evals:run {path?} --filter="refund" --format=json --output=storage/ai-evals/results.json
+```
+
+Options:
+
+- `--filter=` runs eval cases whose names contain the filter.
+- `--format=` supports `text`, `json`, `junit`, and `github`.
+- `--output=` writes the formatted report to a file.
+
+For examples of each report format, see [Output formats](/output-formats).
+
+Formats:
+
+- `text` prints the human-readable terminal report and is the default.
+- `json` prints or writes the full standalone run report as JSON.
+- `junit` prints or writes JUnit XML for CI test report UIs.
+- `github` prints GitHub Actions `::error file=...,line=...::...` annotations for failed evals.

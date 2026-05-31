@@ -21,6 +21,7 @@ class MakeAgentEvalCommand extends Command
         {--type= : Eval style: pest or standalone}
         {--agent= : Agent class to use in generated template}
         {--path= : Relative output directory (defaults to tests/AgentEvals)}
+        {--dataset : Scaffold a JSON dataset-backed eval and sample dataset file}
         {--force : Overwrite an existing eval file}';
 
     protected $description = 'Create an AI eval file for Pest or standalone runs';
@@ -71,6 +72,7 @@ class MakeAgentEvalCommand extends Command
             : sprintf('%s.eval.php', $fileStem);
 
         $targetPath = $directory.'/'.$fileName;
+        $datasetPath = $directory.'/datasets/'.$fileStem.'.json';
 
         if ($this->files->isFile($targetPath) && ! (bool) $this->option('force')) {
             $this->components->error(sprintf('Eval file already exists: %s', $this->relativeToBasePath($targetPath)));
@@ -78,14 +80,32 @@ class MakeAgentEvalCommand extends Command
             return self::FAILURE;
         }
 
+        if ((bool) $this->option('dataset') && $this->files->isFile($datasetPath) && ! (bool) $this->option('force')) {
+            $this->components->error(sprintf('Dataset file already exists: %s', $this->relativeToBasePath($datasetPath)));
+
+            return self::FAILURE;
+        }
+
         $agentClass = $this->resolveAgentClass();
 
-        $written = $this->files->put($targetPath, $this->buildTemplate($type, $evalName, $agentClass));
+        $written = $this->files->put($targetPath, $this->buildTemplate($type, $evalName, $agentClass, (bool) $this->option('dataset'), $fileStem, $relativePath));
 
         if ($written === false) {
             $this->components->error(sprintf('Unable to write eval file [%s].', $this->relativeToBasePath($targetPath)));
 
             return self::FAILURE;
+        }
+
+        if ((bool) $this->option('dataset')) {
+            $this->files->ensureDirectoryExists(dirname($datasetPath));
+
+            if ($this->files->put($datasetPath, $this->buildDatasetTemplate()) === false) {
+                $this->components->error(sprintf('Unable to write dataset file [%s].', $this->relativeToBasePath($datasetPath)));
+
+                return self::FAILURE;
+            }
+
+            $this->components->info(sprintf('Created [%s].', $this->relativeToBasePath($datasetPath)));
         }
 
         $this->components->info(sprintf('Created [%s].', $this->relativeToBasePath($targetPath)));
@@ -112,9 +132,13 @@ class MakeAgentEvalCommand extends Command
         return in_array($type, ['pest', 'standalone'], true) ? $type : null;
     }
 
-    protected function buildTemplate(string $type, string $evalName, string $agentClass): string
+    protected function buildTemplate(string $type, string $evalName, string $agentClass, bool $dataset, string $fileStem, string $relativePath): string
     {
         $escapedEvalName = str_replace(['\\', "'"], ['\\\\', "\\'"], $evalName);
+
+        if ($dataset) {
+            return $this->buildDatasetEvalTemplate($type, $escapedEvalName, $agentClass, $fileStem, $relativePath);
+        }
 
         if ($type === 'pest') {
             return <<<PHP
@@ -151,6 +175,66 @@ return static function (StandaloneEvalSuite \$suite): void {
     });
 };
 PHP;
+    }
+
+    protected function buildDatasetEvalTemplate(string $type, string $escapedEvalName, string $agentClass, string $fileStem, string $relativePath): string
+    {
+        $datasetPath = trim($relativePath, '/').'/datasets/'.$fileStem.'.json';
+
+        if ($type === 'pest') {
+            return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+
+it('{$escapedEvalName}', function () {
+    AIEval::agent({$agentClass}::class)
+        ->name('{$escapedEvalName}')
+        ->dataset('{$datasetPath}')
+        ->inputColumn('input')
+        ->expectContainsFrom('required_terms')
+        ->expectNotContainsFrom('forbidden_terms')
+        ->run()
+        ->assertPasses();
+});
+PHP;
+        }
+
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite \$suite): void {
+    \$suite->eval('{$escapedEvalName}', static function () {
+        return AIEval::agent({$agentClass}::class)
+            ->dataset('{$datasetPath}')
+            ->inputColumn('input')
+            ->expectContainsFrom('required_terms')
+            ->expectNotContainsFrom('forbidden_terms')
+            ->run();
+    });
+};
+PHP;
+    }
+
+    protected function buildDatasetTemplate(): string
+    {
+        return <<<'JSON'
+[
+    {
+        "name": "refund inside window",
+        "input": "I bought this last week. Can I get a refund?",
+        "required_terms": ["refund", "30 days"],
+        "forbidden_terms": ["guaranteed"]
+    }
+]
+JSON;
     }
 
     protected function relativeToBasePath(string $absolutePath): string

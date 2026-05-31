@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Evaluation;
 
+use Closure;
+use LaravelAIEvaluation\Contracts\EvalExpectation;
 use LaravelAIEvaluation\Evaluation\Judge\PromptJudgeClient;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
 use LaravelAIEvaluation\Evaluation\Scoring\ExactScorer;
@@ -11,6 +13,8 @@ use LaravelAIEvaluation\Evaluation\Scoring\JudgeScorer;
 use LaravelAIEvaluation\Evaluation\Support\PromptingTargetResolver;
 use LaravelAIEvaluation\Evaluation\Support\ResponseNormalizer;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
+use ReflectionFunction;
+use ReflectionMethod;
 use RuntimeException;
 use Throwable;
 
@@ -41,6 +45,8 @@ class EvalRunner
     /**
      * @param  array<int, string>  $contains
      * @param  array<int, array{criteria: string, reference: string|null, threshold: float|null, judge: object|string|null}>  $judgeExpectations
+     * @param  array<int, array<string, mixed>>  $deterministicExpectations
+     * @param  array<int, callable|object|string>  $customExpectations
      */
     public function run(
         object|string $agent,
@@ -50,10 +56,12 @@ class EvalRunner
         ?string $exact = null,
         array $judgeExpectations = [],
         ?string $location = null,
+        array $deterministicExpectations = [],
+        array $customExpectations = [],
     ): EvalResult {
         $name = $this->resolveName($name);
 
-        if ($contains === [] && $exact === null && $judgeExpectations === []) {
+        if ($contains === [] && $exact === null && $judgeExpectations === [] && $deterministicExpectations === [] && $customExpectations === []) {
             throw new RuntimeException("AI eval '{$name}' must define at least one expectation.");
         }
 
@@ -97,6 +105,26 @@ class EvalRunner
 
             if (! $passed) {
                 $failures[] = $expectationResults[array_key_last($expectationResults)]['reason'];
+            }
+        }
+
+        foreach ($deterministicExpectations as $expectation) {
+            $result = $this->scoreDeterministicExpectation($output, $expectation);
+
+            $expectationResults[] = $result;
+
+            if (! $result['passed']) {
+                $failures[] = $result['reason'];
+            }
+        }
+
+        foreach ($customExpectations as $expectation) {
+            $result = $this->scoreCustomExpectation($input, $output, $expectation);
+
+            $expectationResults[] = $result;
+
+            if (! $result['passed']) {
+                $failures[] = sprintf('Custom expectation "%s" failed: %s', $result['name'], $result['reason']);
             }
         }
 
@@ -154,6 +182,403 @@ class EvalRunner
         }
 
         return 'unnamed-eval';
+    }
+
+    /**
+     * @param  array<string, mixed>  $expectation
+     * @return array<string, mixed>
+     */
+    protected function scoreDeterministicExpectation(string $output, array $expectation): array
+    {
+        return match ($expectation['type'] ?? null) {
+            'regex' => $this->scoreRegexExpectation($output, (string) ($expectation['pattern'] ?? '')),
+            'not_contains' => $this->scoreNotContainsExpectation($output, $expectation['values'] ?? []),
+            'json' => $this->scoreJsonExpectation($output),
+            'json_path' => $this->scoreJsonPathExpectation(
+                output: $output,
+                path: (string) ($expectation['path'] ?? ''),
+                hasExpected: (bool) ($expectation['has_expected'] ?? false),
+                expected: $expectation['expected'] ?? null,
+            ),
+            'length' => $this->scoreLengthExpectation(
+                output: $output,
+                min: $expectation['min'] ?? null,
+                max: $expectation['max'] ?? null,
+            ),
+            'starts_with' => $this->scoreStartsWithExpectation($output, (string) ($expectation['value'] ?? '')),
+            'ends_with' => $this->scoreEndsWithExpectation($output, (string) ($expectation['value'] ?? '')),
+            default => [
+                'type' => (string) ($expectation['type'] ?? 'unknown'),
+                'passed' => false,
+                'reason' => sprintf('Unknown deterministic expectation type "%s".', (string) ($expectation['type'] ?? 'unknown')),
+            ],
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreCustomExpectation(string $input, string $output, callable|object|string $expectation): array
+    {
+        $name = $this->customExpectationName($expectation);
+
+        try {
+            $resolvedExpectation = $this->resolveCustomExpectation($expectation);
+            $rawResult = $this->evaluateCustomExpectation($resolvedExpectation, $input, $output);
+
+            return $this->normalizeCustomExpectationResult($rawResult, $name);
+        } catch (Throwable $exception) {
+            return [
+                'type' => 'custom',
+                'passed' => false,
+                'name' => $name,
+                'reason' => sprintf('Threw %s: %s', $exception::class, $exception->getMessage()),
+                'metadata' => [
+                    'exception_class' => $exception::class,
+                ],
+            ];
+        }
+    }
+
+    protected function resolveCustomExpectation(callable|object|string $expectation): callable|object|string
+    {
+        if (is_string($expectation) && class_exists($expectation)) {
+            return function_exists('app') ? app($expectation) : new $expectation;
+        }
+
+        return $expectation;
+    }
+
+    protected function evaluateCustomExpectation(callable|object|string $expectation, string $input, string $output): mixed
+    {
+        if ($expectation instanceof EvalExpectation) {
+            return $expectation->evaluate($input, $output);
+        }
+
+        if (is_callable($expectation)) {
+            return $this->invokeCustomCallable($expectation, $input, $output);
+        }
+
+        throw new RuntimeException(sprintf(
+            'Custom expectation must implement %s or be callable.',
+            EvalExpectation::class,
+        ));
+    }
+
+    protected function invokeCustomCallable(callable $expectation, string $input, string $output): mixed
+    {
+        $parameterCount = $this->callableParameterCount($expectation);
+
+        if ($parameterCount <= 1) {
+            return $expectation($output);
+        }
+
+        return $expectation($output, $input);
+    }
+
+    protected function callableParameterCount(callable $expectation): int
+    {
+        if (is_array($expectation)) {
+            return (new ReflectionMethod($expectation[0], (string) $expectation[1]))->getNumberOfParameters();
+        }
+
+        if (is_object($expectation) && ! $expectation instanceof Closure) {
+            return (new ReflectionMethod($expectation, '__invoke'))->getNumberOfParameters();
+        }
+
+        return (new ReflectionFunction($expectation))->getNumberOfParameters();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function normalizeCustomExpectationResult(mixed $rawResult, string $name): array
+    {
+        if ($rawResult instanceof ExpectationResult) {
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                ...$rawResult->toArray(),
+            ];
+        }
+
+        if (is_bool($rawResult)) {
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                'passed' => $rawResult,
+                'reason' => $rawResult ? 'Returned true.' : 'Returned false.',
+            ];
+        }
+
+        if (is_array($rawResult)) {
+            if (! array_key_exists('passed', $rawResult)) {
+                throw new RuntimeException('Custom expectation array results must include a "passed" key.');
+            }
+
+            return [
+                'type' => 'custom',
+                'name' => $name,
+                'passed' => (bool) $rawResult['passed'],
+                'reason' => isset($rawResult['reason']) && is_string($rawResult['reason'])
+                    ? $rawResult['reason']
+                    : ((bool) $rawResult['passed'] ? 'Custom expectation passed.' : 'Custom expectation failed.'),
+                ...array_intersect_key($rawResult, array_flip(['score', 'metadata'])),
+            ];
+        }
+
+        throw new RuntimeException(sprintf(
+            'Custom expectation returned unsupported result type %s. Return %s, bool, or an array with a passed key.',
+            get_debug_type($rawResult),
+            ExpectationResult::class,
+        ));
+    }
+
+    protected function customExpectationName(callable|object|string $expectation): string
+    {
+        if ($expectation instanceof Closure) {
+            return 'Closure';
+        }
+
+        if (is_object($expectation)) {
+            return $expectation::class;
+        }
+
+        if (is_string($expectation)) {
+            return $expectation;
+        }
+
+        return 'custom';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreRegexExpectation(string $output, string $pattern): array
+    {
+        $matches = @preg_match($pattern, $output);
+        $passed = $matches === 1;
+
+        return [
+            'type' => 'regex',
+            'passed' => $passed,
+            'pattern' => $pattern,
+            'reason' => match ($matches) {
+                1 => sprintf('Output matches regex pattern %s.', $pattern),
+                0 => sprintf('Output did not match regex pattern %s.', $pattern),
+                default => sprintf('Invalid regex pattern %s.', $pattern),
+            },
+        ];
+    }
+
+    /**
+     * @param  mixed  $values
+     * @return array<string, mixed>
+     */
+    protected function scoreNotContainsExpectation(string $output, mixed $values): array
+    {
+        $forbidden = [];
+
+        foreach (is_array($values) ? $values : [$values] as $value) {
+            $value = (string) $value;
+
+            if (str_contains($output, $value)) {
+                $forbidden[] = $value;
+            }
+        }
+
+        $passed = $forbidden === [];
+
+        return [
+            'type' => 'not_contains',
+            'passed' => $passed,
+            'values' => is_array($values) ? array_values($values) : [$values],
+            'reason' => $passed
+                ? 'No forbidden substrings are present.'
+                : sprintf('Output contained forbidden substring(s): %s', implode(', ', $forbidden)),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreJsonExpectation(string $output): array
+    {
+        json_decode($output, true);
+        $passed = json_last_error() === JSON_ERROR_NONE;
+
+        return [
+            'type' => 'json',
+            'passed' => $passed,
+            'reason' => $passed
+                ? 'Output is valid JSON.'
+                : sprintf('Output is not valid JSON: %s', json_last_error_msg()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreJsonPathExpectation(string $output, string $path, bool $hasExpected, mixed $expected): array
+    {
+        $decoded = json_decode($output, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [
+                'type' => 'json_path',
+                'passed' => false,
+                'path' => $path,
+                'expected' => $hasExpected ? $expected : null,
+                'has_expected' => $hasExpected,
+                'reason' => sprintf('Output is not valid JSON, so JSON path "%s" could not be checked: %s', $path, json_last_error_msg()),
+            ];
+        }
+
+        $resolved = $this->resolveJsonPath($decoded, $path);
+
+        if (! $resolved['exists']) {
+            return [
+                'type' => 'json_path',
+                'passed' => false,
+                'path' => $path,
+                'expected' => $hasExpected ? $expected : null,
+                'has_expected' => $hasExpected,
+                'reason' => sprintf('JSON path "%s" was not found.', $path),
+            ];
+        }
+
+        if (! $hasExpected) {
+            return [
+                'type' => 'json_path',
+                'passed' => true,
+                'path' => $path,
+                'has_expected' => false,
+                'actual' => $resolved['value'],
+                'reason' => sprintf('JSON path "%s" exists.', $path),
+            ];
+        }
+
+        $passed = $resolved['value'] === $expected;
+
+        return [
+            'type' => 'json_path',
+            'passed' => $passed,
+            'path' => $path,
+            'expected' => $expected,
+            'has_expected' => true,
+            'actual' => $resolved['value'],
+            'reason' => $passed
+                ? sprintf('JSON path "%s" matched expected value %s.', $path, $this->formatValue($expected))
+                : sprintf('Expected JSON path "%s" to equal %s, but received %s.', $path, $this->formatValue($expected), $this->formatValue($resolved['value'])),
+        ];
+    }
+
+    /**
+     * @return array{exists: bool, value: mixed}
+     */
+    protected function resolveJsonPath(mixed $data, string $path): array
+    {
+        $normalizedPath = trim($path);
+
+        if ($normalizedPath === '' || $normalizedPath === '$') {
+            return ['exists' => true, 'value' => $data];
+        }
+
+        if (str_starts_with($normalizedPath, '$.')) {
+            $normalizedPath = substr($normalizedPath, 2);
+        }
+
+        foreach (explode('.', $normalizedPath) as $segment) {
+            if (! is_array($data)) {
+                return ['exists' => false, 'value' => null];
+            }
+
+            $key = ctype_digit($segment) ? (int) $segment : $segment;
+
+            if (! array_key_exists($key, $data)) {
+                return ['exists' => false, 'value' => null];
+            }
+
+            $data = $data[$key];
+        }
+
+        return ['exists' => true, 'value' => $data];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreLengthExpectation(string $output, mixed $min, mixed $max): array
+    {
+        $min = is_int($min) ? $min : null;
+        $max = is_int($max) ? $max : null;
+        $length = function_exists('mb_strlen') ? mb_strlen($output) : strlen($output);
+        $passed = ($min === null || $length >= $min) && ($max === null || $length <= $max);
+
+        return [
+            'type' => 'length',
+            'passed' => $passed,
+            'min' => $min,
+            'max' => $max,
+            'actual_length' => $length,
+            'reason' => $passed
+                ? sprintf('Output length %d is within expected bounds.', $length)
+                : sprintf('Expected output length %s, but received %d characters.', $this->formatLengthBounds($min, $max), $length),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreStartsWithExpectation(string $output, string $value): array
+    {
+        $passed = str_starts_with($output, $value);
+
+        return [
+            'type' => 'starts_with',
+            'passed' => $passed,
+            'value' => $value,
+            'reason' => $passed
+                ? sprintf('Output starts with "%s".', $value)
+                : sprintf('Expected output to start with "%s".', $value),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function scoreEndsWithExpectation(string $output, string $value): array
+    {
+        $passed = str_ends_with($output, $value);
+
+        return [
+            'type' => 'ends_with',
+            'passed' => $passed,
+            'value' => $value,
+            'reason' => $passed
+                ? sprintf('Output ends with "%s".', $value)
+                : sprintf('Expected output to end with "%s".', $value),
+        ];
+    }
+
+    protected function formatValue(mixed $value): string
+    {
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return is_string($encoded) ? $encoded : get_debug_type($value);
+    }
+
+    protected function formatLengthBounds(?int $min, ?int $max): string
+    {
+        if ($min !== null && $max !== null) {
+            return sprintf('between %d and %d characters', $min, $max);
+        }
+
+        if ($min !== null) {
+            return sprintf('to be at least %d characters', $min);
+        }
+
+        return sprintf('to be at most %d characters', $max);
     }
 
     protected function isAuthenticationFailure(Throwable $exception): bool

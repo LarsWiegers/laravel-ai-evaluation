@@ -1,0 +1,9 @@
+{
+  "name": "laravel-ai-evaluation-devtools",
+  "private": true,
+  "scripts": {
+    "ai-evals:junit": "composer exec -- testbench ai-evals:run ../../../../workbench/evals --format=junit --output=../../../../storage/ai-evals/workbench-junit.xml",
+    "ai-evals:junit-viewer": "npx --yes xunit-viewer --results=storage/ai-evals/workbench-junit.xml --output=storage/ai-evals/xunit-viewer.html --title=\"AI Eval JUnit Report\"",
+    "ai-evals:junit-viewer:open": "npm run ai-evals:junit-viewer && node bin/serve-junit-viewer.mjs"
+  }
+}

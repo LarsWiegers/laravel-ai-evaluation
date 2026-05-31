@@ -104,6 +104,8 @@ AI_EVAL_SUMMARY_CURRENCY=USD
 
 ### 6) Get the summary output
 
+For standalone JSON, JUnit, and GitHub annotation reports, see [Output formats](/output-formats).
+
 Run your evals and check the end of the output:
 
 ::: code-group

@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use LaravelAIEvaluation\Contracts\EvalExpectation;
 use LaravelAIEvaluation\Evaluation\EvalCaseBuilder;
 use LaravelAIEvaluation\Evaluation\EvalRunner;
+use LaravelAIEvaluation\Evaluation\ExpectationResult;
 use LaravelAIEvaluation\Evaluation\Judge\JudgeClient;
 use LaravelAIEvaluation\Evaluation\Judge\JudgeVerdict;
 use LaravelAIEvaluation\Evaluation\Scoring\ContainsScorer;
@@ -94,6 +96,194 @@ it('builder combines contains expectations from string and array', function () {
         ->run();
 
     expect($result->passed())->toBeTrue();
+});
+
+it('builder supports passing deterministic expectations', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return '{"status":"eligible","policy":{"days":30},"items":[{"name":"refund"}],"message":"Refunds within 30 days."}';
+        }
+    });
+
+    $result = $builder
+        ->name('deterministic-pass')
+        ->input('ignored')
+        ->expectRegex('/refunds? within \d+ days/i')
+        ->expectNotContains(['legal guarantee', 'always approved'])
+        ->expectJson()
+        ->expectJsonPath('status', 'eligible')
+        ->expectJsonPath('policy.days', 30)
+        ->expectJsonPath('items.0.name')
+        ->expectLength(min: 20, max: 200)
+        ->expectStartsWith('{')
+        ->expectEndsWith('}')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect(array_column($result->expectationResults(), 'type'))->toBe([
+        'regex',
+        'not_contains',
+        'json',
+        'json_path',
+        'json_path',
+        'json_path',
+        'length',
+        'starts_with',
+        'ends_with',
+    ]);
+});
+
+it('builder reports failing deterministic expectations with clear messages', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Legal guarantee is always approved.';
+        }
+    });
+
+    $result = $builder
+        ->name('deterministic-fail')
+        ->input('ignored')
+        ->expectRegex('/refunds? within \d+ days/i')
+        ->expectNotContains(['Legal guarantee', 'always approved'])
+        ->expectJson()
+        ->expectJsonPath('status', 'eligible')
+        ->expectLength(max: 10)
+        ->expectStartsWith('{')
+        ->expectEndsWith('}')
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures())->toHaveCount(7);
+    expect($result->failures()[0])->toContain('Output did not match regex pattern');
+    expect($result->failures()[1])->toContain('Output contained forbidden substring(s): Legal guarantee, always approved');
+    expect($result->failures()[2])->toContain('Output is not valid JSON');
+    expect($result->failures()[3])->toContain('JSON path "status" could not be checked');
+    expect($result->failures()[4])->toContain('Expected output length to be at most 10 characters');
+    expect($result->failures()[5])->toContain('Expected output to start with "{"');
+    expect($result->failures()[6])->toContain('Expected output to end with "}"');
+});
+
+it('json path expectations distinguish missing paths from expected null values', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return '{"status":null}';
+        }
+    });
+
+    $result = $builder
+        ->name('json-path-null')
+        ->input('ignored')
+        ->expectJsonPath('status', null)
+        ->expectJsonPath('missing')
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->expectationResults()[0]['passed'])->toBeTrue();
+    expect($result->expectationResults()[1]['reason'])->toBe('JSON path "missing" was not found.');
+});
+
+it('builder supports passing custom closure expectations', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-closure-pass')
+        ->input('ignored')
+        ->expect(fn (string $output): bool => str_contains($output, '30 days'))
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => 'Closure',
+        'passed' => true,
+        'reason' => 'Returned true.',
+    ]);
+});
+
+it('builder supports failing custom expectation contract objects', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds may be available.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-contract-fail')
+        ->input('ignored')
+        ->expect(new RefundPolicyExpectation)
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures()[0])->toContain('Custom expectation "RefundPolicyExpectation" failed: Missing 30-day refund window.');
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => RefundPolicyExpectation::class,
+        'passed' => false,
+        'reason' => 'Missing 30-day refund window.',
+        'score' => 0.25,
+        'metadata' => ['required_window' => '30 days'],
+    ]);
+});
+
+it('builder resolves invokable custom expectation class strings from the container', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-container-pass')
+        ->input('ignored')
+        ->expect(ContainerResolvedRefundExpectation::class)
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => ContainerResolvedRefundExpectation::class,
+        'passed' => true,
+        'reason' => 'Output includes refund policy window.',
+        'score' => 1.0,
+        'metadata' => ['days' => 30],
+    ]);
+});
+
+it('builder records custom expectation exceptions as failures', function () {
+    $builder = new EvalCaseBuilder(new class {
+        public function prompt(string $prompt): string
+        {
+            return 'Refunds are available within 30 days.';
+        }
+    });
+
+    $result = $builder
+        ->name('custom-exception-fail')
+        ->input('ignored')
+        ->expect(function (string $output): bool {
+            throw new RuntimeException('custom scorer exploded');
+        })
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->expectationResults()[0])->toMatchArray([
+        'type' => 'custom',
+        'name' => 'Closure',
+        'passed' => false,
+        'metadata' => ['exception_class' => RuntimeException::class],
+    ]);
+    expect($result->expectationResults()[0]['reason'])->toContain('custom scorer exploded');
+    expect($result->failures()[0])->toContain('Custom expectation "Closure" failed: Threw RuntimeException: custom scorer exploded');
 });
 
 it('builder captures test file location on result', function () {
@@ -469,3 +659,43 @@ it('retries transient judge failures when configured', function () {
 });
 
 class InlineJudgeAgent {}
+
+class RefundPolicyExpectation implements EvalExpectation
+{
+    public function evaluate(string $input, string $output): ExpectationResult
+    {
+        if (str_contains($output, '30 days')) {
+            return ExpectationResult::pass('Output includes 30-day refund window.', 1.0, ['required_window' => '30 days']);
+        }
+
+        return ExpectationResult::fail('Missing 30-day refund window.', 0.25, ['required_window' => '30 days']);
+    }
+}
+
+class RefundPolicyWindow
+{
+    public function days(): int
+    {
+        return 30;
+    }
+}
+
+class ContainerResolvedRefundExpectation
+{
+    public function __construct(protected RefundPolicyWindow $window) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __invoke(string $output): array
+    {
+        $expected = sprintf('%d days', $this->window->days());
+
+        return [
+            'passed' => str_contains($output, $expected),
+            'reason' => 'Output includes refund policy window.',
+            'score' => 1.0,
+            'metadata' => ['days' => $this->window->days()],
+        ];
+    }
+}

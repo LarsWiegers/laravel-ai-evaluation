@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace LaravelAIEvaluation\Console;
 
+use LaravelAIEvaluation\Console\Reports\GithubStandaloneReportFormatter;
+use LaravelAIEvaluation\Console\Reports\JsonStandaloneReportFormatter;
+use LaravelAIEvaluation\Console\Reports\JunitStandaloneReportFormatter;
+use LaravelAIEvaluation\Console\Reports\StandaloneEvalCaseResult;
+use LaravelAIEvaluation\Console\Reports\StandaloneEvalRunReport;
+use LaravelAIEvaluation\Console\Reports\StandaloneReportFormatter;
+use LaravelAIEvaluation\Console\Reports\StandaloneReportSanitizer;
+use LaravelAIEvaluation\Console\Reports\TextStandaloneReportFormatter;
+use LaravelAIEvaluation\Evaluation\DatasetEvalResult;
 use LaravelAIEvaluation\Evaluation\EvalResult;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
@@ -14,7 +23,21 @@ use Throwable;
 
 class StandaloneEvalRunner
 {
-    public function run(string $path, ?string $filter, callable $output): int
+    public function run(string $path, ?string $filter, callable $output, string $format = 'text', ?string $outputPath = null): int
+    {
+        $report = $this->buildReport($path, $filter);
+        $formatted = $this->formatter($format)->format($report);
+
+        if ($outputPath !== null && trim($outputPath) !== '') {
+            $this->writeOutputFile($outputPath, $formatted);
+        } else {
+            $output($formatted);
+        }
+
+        return $report->exitCode();
+    }
+
+    public function buildReport(string $path, ?string $filter): StandaloneEvalRunReport
     {
         $files = $this->resolveEvalFiles($path);
 
@@ -22,11 +45,8 @@ class StandaloneEvalRunner
             throw new RuntimeException(sprintf('No standalone eval files (*.eval.php) found at %s.', $path));
         }
 
-        $summary = [
-            'total' => 0,
-            'passed' => 0,
-            'failed' => 0,
-        ];
+        $cases = [];
+        $sanitizer = new StandaloneReportSanitizer;
 
         foreach ($files as $file) {
             foreach ($this->loadDefinitions($file) as $definition) {
@@ -36,52 +56,76 @@ class StandaloneEvalRunner
                     continue;
                 }
 
-                $summary['total']++;
-
                 try {
                     $result = StandaloneEvalContext::withName($name, function () use ($definition): mixed {
                         return ($definition['run'])();
                     });
 
-                    if (! $result instanceof EvalResult) {
-                        throw new RuntimeException(sprintf('Standalone eval "%s" must return an EvalResult.', $name));
-                    }
+                    if ($result instanceof DatasetEvalResult) {
+                        if ($result->results() === []) {
+                            $cases[] = StandaloneEvalCaseResult::failed($name, sprintf('%s:1', $file), 'Dataset contains no rows.', $sanitizer);
 
-                    if ($result->passed()) {
-                        $summary['passed']++;
-                        $output(sprintf("<fg=green;options=bold>PASS %s</>\n", $name));
+                            continue;
+                        }
+
+                        foreach ($result->results() as $datasetResult) {
+                            $cases[] = StandaloneEvalCaseResult::fromEvalResult($datasetResult->toArray()['name'], $datasetResult, $sanitizer);
+                        }
 
                         continue;
                     }
 
-                    $summary['failed']++;
-                    $output(sprintf("<fg=red;options=bold>FAIL %s</>\n", $name));
-
-                    foreach ($result->failures() as $failure) {
-                        $output(sprintf("  - %s\n", $failure));
+                    if (! $result instanceof EvalResult) {
+                        throw new RuntimeException(sprintf('Standalone eval "%s" must return an EvalResult or DatasetEvalResult.', $name));
                     }
 
-                    if ($this->hasContainsExpectationFailure($result)) {
-                        $output("  Returned output:\n");
-                        $output(sprintf("    %s\n", $this->formatOutputBlock($result->output())));
-                    }
+                    $cases[] = StandaloneEvalCaseResult::fromEvalResult($name, $result, $sanitizer);
                 } catch (Throwable $exception) {
-                    $summary['failed']++;
-                    $output(sprintf("<fg=red;options=bold>ERROR %s</>\n", $name));
-                    $output(sprintf("  - %s\n", $exception->getMessage()));
+                    $cases[] = StandaloneEvalCaseResult::fromException($name, sprintf('%s:1', $file), $exception, $sanitizer);
                 }
             }
         }
 
-        if ($summary['total'] === 0) {
-            $output("No standalone eval names matched the provided filter.\n");
+        return new StandaloneEvalRunReport($cases, $cases !== []);
+    }
 
-            return 1;
+    protected function formatter(string $format): StandaloneReportFormatter
+    {
+        return match ($format) {
+            'text' => new TextStandaloneReportFormatter,
+            'json' => new JsonStandaloneReportFormatter,
+            'junit' => new JunitStandaloneReportFormatter,
+            'github' => new GithubStandaloneReportFormatter,
+            default => throw new RuntimeException(sprintf('Unsupported standalone eval report format "%s". Supported formats: text, json, junit, github.', $format)),
+        };
+    }
+
+    protected function writeOutputFile(string $outputPath, string $contents): void
+    {
+        $path = $this->absoluteOutputPath($outputPath);
+        $directory = dirname($path);
+
+        if (! is_dir($directory) && ! mkdir($directory, 0777, true) && ! is_dir($directory)) {
+            throw new RuntimeException(sprintf('Unable to create eval report output directory [%s].', $directory));
         }
 
-        $output(sprintf("\nStandalone eval summary: total=%d passed=%d failed=%d\n", $summary['total'], $summary['passed'], $summary['failed']));
+        if (file_put_contents($path, $contents) === false) {
+            throw new RuntimeException(sprintf('Unable to write eval report output file [%s].', $path));
+        }
+    }
 
-        return $summary['failed'] === 0 ? 0 : 1;
+    protected function absoluteOutputPath(string $outputPath): string
+    {
+        $isWindowsAbsolutePath = strlen($outputPath) >= 3
+            && ctype_alpha($outputPath[0])
+            && $outputPath[1] === ':'
+            && in_array($outputPath[2], ['\\', '/'], true);
+
+        if (str_starts_with($outputPath, '/') || $isWindowsAbsolutePath) {
+            return $outputPath;
+        }
+
+        return base_path($outputPath);
     }
 
     /**
@@ -151,29 +195,4 @@ class StandaloneEvalRunner
         return str_contains(strtolower($name), strtolower($filter));
     }
 
-    protected function hasContainsExpectationFailure(EvalResult $result): bool
-    {
-        foreach ($result->expectationResults() as $expectationResult) {
-            if (($expectationResult['type'] ?? null) !== 'contains') {
-                continue;
-            }
-
-            if (($expectationResult['passed'] ?? false) === false) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    protected function formatOutputBlock(string $output): string
-    {
-        $normalized = trim($output);
-
-        if ($normalized === '') {
-            return '(empty)';
-        }
-
-        return str_replace("\n", "\n    ", $normalized);
-    }
 }

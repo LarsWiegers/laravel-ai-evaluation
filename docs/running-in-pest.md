@@ -74,4 +74,4 @@ AI_EVAL_VERBOSE=true
 AI_EVAL_FORMAT=text
 ```
 
-`AI_EVAL_FORMAT` supports `text` and `json`.
+`AI_EVAL_FORMAT` supports `text` and `json` for verbose per-eval dumps. For standalone runner report formats, see [Output formats](/output-formats).

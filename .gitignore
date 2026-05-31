@@ -3,6 +3,7 @@
 /.phpunit.cache
 /coverage
 /composer.lock
+/storage
 /vendor
 /docs/node_modules
 /docs/.vitepress/cache
