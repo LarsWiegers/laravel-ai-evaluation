@@ -77,6 +77,11 @@ class EvalCaseBuilder
         return $this;
     }
 
+    public function conversation(): ConversationEvalBuilder
+    {
+        return new ConversationEvalBuilder($this->agent, $this->runner, $this->resolveName(), $this->location ?? $this->resolveLocation(), $this->judge);
+    }
+
     /**
      * @param  string|array<int, string>  $contains
      */

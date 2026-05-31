@@ -145,6 +145,22 @@ CSV datasets should include a header row. CSV cell values are strings.
 
 Column paths support dot notation.
 
+## `conversation()`
+
+Starts a multi-turn conversation eval. The transcript is flattened into one prompt and the next assistant response is evaluated.
+
+```php
+->conversation()
+->user('I bought this last week.')
+->assistantShouldContain('order number')
+->user('The order is #123.')
+->expectContains('refund')
+```
+
+Conversation evals also support datasets with `dataset()`, `turnsColumn()`, `inputColumn()`, `expectContainsFrom()`, and `expectNotContainsFrom()`.
+
+See [Conversation evals](/conversation-evals) for examples and limitations.
+
 ## `expectJudge()`
 
 Scores the output with an LLM judge using criteria and an optional threshold.

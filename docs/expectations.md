@@ -8,6 +8,7 @@ Expectations define how an eval case passes or fails.
 - [LLM-as-judge expectations](./llm-as-judge-expectations)
 - [Custom expectations](./custom-expectations)
 - [Dataset evals](./datasets)
+- [Conversation evals](./conversation-evals)
 
 More expectation types can be added over time.
 

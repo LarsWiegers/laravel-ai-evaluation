@@ -207,6 +207,116 @@ PHP);
     })->toThrow(RuntimeException::class, 'must return an array of rows');
 });
 
+it('runs flattened multi turn conversation evals', function () {
+    $agent = new ConversationAgent;
+
+    $result = AIEval::agent($agent)
+        ->name('refund-conversation')
+        ->conversation()
+        ->user('I bought this last week.')
+        ->assistantShouldContain('order number')
+        ->user('The order is #123.')
+        ->expectContains('refund')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($agent->prompt)->toContain('User: I bought this last week.');
+    expect($agent->prompt)->toContain('User: The order is #123.');
+    expect($agent->prompt)->toEndWith('Assistant:');
+});
+
+it('supports forbidden text checks for conversation final responses', function () {
+    $result = AIEval::agent(new ConversationAgent)
+        ->name('safe-conversation')
+        ->conversation()
+        ->user('Can you guarantee my refund?')
+        ->assistantShouldNotContain('guaranteed')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+});
+
+it('requires at least one user turn for conversation evals', function () {
+    expect(function (): void {
+        AIEval::agent(new ConversationAgent)
+            ->name('empty-conversation')
+            ->conversation()
+            ->expectContains('anything')
+            ->run();
+    })->toThrow(InvalidArgumentException::class, 'Conversation evals require at least one user turn.');
+});
+
+it('runs dataset backed conversation eval rows', function () {
+    $path = createDatasetFixture([
+        [
+            'name' => 'refund follow up',
+            'turns' => [
+                ['role' => 'user', 'content' => 'I bought this last week.'],
+                ['role' => 'assistant', 'content' => 'Can you share your order number?'],
+                ['role' => 'user', 'content' => 'The order is #123.'],
+            ],
+            'required_terms' => ['refund', 'order number'],
+        ],
+        [
+            'name' => 'single input fallback',
+            'input' => 'Can you help with a refund?',
+            'required_terms' => ['refund'],
+        ],
+    ]);
+
+    $result = AIEval::agent(new ConversationAgent)
+        ->name('conversation-dataset')
+        ->conversation()
+        ->dataset($path)
+        ->expectContainsFrom('required_terms')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->results())->toHaveCount(2);
+    expect($result->results()[0]->toArray()['name'])->toBe('conversation-dataset / refund follow up');
+    expect($result->results()[0]->toArray()['input'])->toContain('Assistant: Can you share your order number?');
+    expect($result->results()[1]->toArray()['input'])->toContain('User: Can you help with a refund?');
+});
+
+it('runs csv backed conversation rows as single user turns', function () {
+    $path = createCsvDatasetFixture(<<<'CSV'
+name,input,required_term
+refund csv,Can you help with a refund?,refund
+CSV);
+
+    $result = AIEval::agent(new ConversationAgent)
+        ->name('conversation-csv-dataset')
+        ->conversation()
+        ->dataset($path)
+        ->expectContainsFrom('required_term')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->results()[0]->toArray()['name'])->toBe('conversation-csv-dataset / refund csv');
+    expect($result->results()[0]->toArray()['input'])->toContain('User: Can you help with a refund?');
+});
+
+it('validates conversation dataset turns', function () {
+    $path = createDatasetFixture([
+        [
+            'name' => 'bad turn',
+            'turns' => [
+                ['role' => 'system', 'content' => 'Invalid role'],
+            ],
+            'required_terms' => ['refund'],
+        ],
+    ]);
+
+    expect(function () use ($path): void {
+        AIEval::agent(new ConversationAgent)
+            ->name('invalid-conversation-dataset')
+            ->conversation()
+            ->dataset($path)
+            ->expectContainsFrom('required_terms')
+            ->run();
+    })->toThrow(RuntimeException::class, 'role must be user or assistant');
+});
+
 class FakeSupportAgent
 {
     public function prompt(string $prompt): string
@@ -232,6 +342,18 @@ class DatasetSupportAgent
         }
 
         return 'Refunds are available within 30 days.';
+    }
+}
+
+class ConversationAgent
+{
+    public string $prompt = '';
+
+    public function prompt(string $prompt): string
+    {
+        $this->prompt = $prompt;
+
+        return 'Please share your order number so I can check refund eligibility.';
     }
 }
 
