@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { readFile } from 'node:fs/promises';
 
 const root = resolve('storage/ai-evals');
@@ -18,7 +18,7 @@ const server = createServer(async (request, response) => {
   const pathname = url.pathname === '/' ? '/xunit-viewer.html' : url.pathname;
   const path = normalize(join(root, decodeURIComponent(pathname)));
 
-  if (! path.startsWith(root)) {
+  if (path !== root && ! path.startsWith(root + sep)) {
     response.writeHead(403);
     response.end('Forbidden');
 

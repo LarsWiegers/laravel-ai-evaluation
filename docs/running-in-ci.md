@@ -51,8 +51,10 @@ For CI test report UIs and debugging artifacts, write JUnit and JSON reports to 
           AI_EVAL_REPORT_INCLUDE_INPUT: false
           AI_EVAL_REPORT_MAX_OUTPUT_LENGTH: 2000
         run: |
-          php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml
-          php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json
+          status=0
+          php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml || status=$?
+          php artisan ai-evals:run --format=json --output=storage/ai-evals/results.json || status=$?
+          exit $status
 
       - name: Upload AI eval reports
         if: always()
