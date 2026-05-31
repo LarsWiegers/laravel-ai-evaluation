@@ -53,6 +53,23 @@ return static function (StandaloneEvalSuite $suite): void {
 };
 ```
 
+## Dataset evals
+
+Standalone evals may return dataset results. The runner expands each dataset row into its own output/report case:
+
+```php
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('refund-policy', static function () {
+        return AIEval::agent(App\Ai\Agents\SupportAgent::class)
+            ->dataset('tests/AgentEvals/datasets/refunds.json')
+            ->expectContainsFrom('required_terms')
+            ->run();
+    });
+};
+```
+
+See [Dataset evals](/datasets) for the dataset file format.
+
 ## Use real provider keys safely
 
 Live evals call real model APIs, so keep credentials outside your repository.

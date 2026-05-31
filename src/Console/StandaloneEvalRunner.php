@@ -12,6 +12,7 @@ use LaravelAIEvaluation\Console\Reports\StandaloneEvalRunReport;
 use LaravelAIEvaluation\Console\Reports\StandaloneReportFormatter;
 use LaravelAIEvaluation\Console\Reports\StandaloneReportSanitizer;
 use LaravelAIEvaluation\Console\Reports\TextStandaloneReportFormatter;
+use LaravelAIEvaluation\Evaluation\DatasetEvalResult;
 use LaravelAIEvaluation\Evaluation\EvalResult;
 use LaravelAIEvaluation\Standalone\StandaloneEvalContext;
 use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
@@ -60,8 +61,16 @@ class StandaloneEvalRunner
                         return ($definition['run'])();
                     });
 
+                    if ($result instanceof DatasetEvalResult) {
+                        foreach ($result->results() as $datasetResult) {
+                            $cases[] = StandaloneEvalCaseResult::fromEvalResult($datasetResult->toArray()['name'], $datasetResult, $sanitizer);
+                        }
+
+                        continue;
+                    }
+
                     if (! $result instanceof EvalResult) {
-                        throw new RuntimeException(sprintf('Standalone eval "%s" must return an EvalResult.', $name));
+                        throw new RuntimeException(sprintf('Standalone eval "%s" must return an EvalResult or DatasetEvalResult.', $name));
                     }
 
                     $cases[] = StandaloneEvalCaseResult::fromEvalResult($name, $result, $sanitizer);

@@ -49,3 +49,18 @@ php artisan make:ai-evals refund-policy --type=standalone --force
 ## What template is generated
 
 The generated templates use `AIEval::agent(...)` with a simple `expectContains(['refund', '30 days'])` check so you can run immediately and then adapt to your domain.
+
+## Dataset-backed evals
+
+Use `--dataset` to scaffold an eval file plus a sample JSON dataset:
+
+```bash
+php artisan make:ai-evals refund-policy --type=standalone --dataset
+```
+
+Generated files:
+
+- `tests/AgentEvals/refund-policy.eval.php`
+- `tests/AgentEvals/datasets/refund-policy.json`
+
+The generated eval uses `dataset()`, `inputColumn()`, `expectContainsFrom()`, and `expectNotContainsFrom()`.

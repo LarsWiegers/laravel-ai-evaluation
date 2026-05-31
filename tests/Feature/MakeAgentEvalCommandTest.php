@@ -108,6 +108,26 @@ it('scaffolds the same custom agent class for pest and standalone templates', fu
     expect((string) file_get_contents($standaloneFile))->toContain($expectedAgentLine);
 });
 
+it('creates dataset backed eval files and sample datasets', function () {
+    $path = createMakeEvalDirectory();
+
+    $this->artisan('make:ai-evals', [
+        'name' => 'refund-policy',
+        '--type' => 'standalone',
+        '--path' => $path,
+        '--dataset' => true,
+    ])->assertExitCode(0);
+
+    $evalFile = base_path($path.'/refund-policy.eval.php');
+    $datasetFile = base_path($path.'/datasets/refund-policy.json');
+
+    expect(is_file($evalFile))->toBeTrue();
+    expect(is_file($datasetFile))->toBeTrue();
+    expect((string) file_get_contents($evalFile))->toContain("->dataset('{$path}/datasets/refund-policy.json')");
+    expect((string) file_get_contents($evalFile))->toContain("->expectContainsFrom('required_terms')");
+    expect((string) file_get_contents($datasetFile))->toContain('refund inside window');
+});
+
 it('fails for invalid eval type', function () {
     $path = createMakeEvalDirectory();
 

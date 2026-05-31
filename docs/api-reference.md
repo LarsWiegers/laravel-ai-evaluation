@@ -126,6 +126,25 @@ Adds a custom expectation. Accepts closures, expectation objects, invokable obje
 
 Reusable expectation classes may implement `LaravelAIEvaluation\Contracts\EvalExpectation` and return `LaravelAIEvaluation\Evaluation\ExpectationResult`.
 
+## `dataset()`
+
+Runs the builder once for each row in a JSON, PHP, or CSV dataset.
+
+```php
+->dataset('tests/AgentEvals/datasets/refunds.json')
+->inputColumn('input')
+->expectContainsFrom('required_terms')
+->expectNotContainsFrom('forbidden_terms')
+```
+
+Dataset rows should be JSON objects. The default input column is `input`, and the default row name column is `name`.
+
+PHP datasets should return the same row array shape from a PHP file, similar to Pest dataset files.
+
+CSV datasets should include a header row. CSV cell values are strings.
+
+Column paths support dot notation.
+
 ## `expectJudge()`
 
 Scores the output with an LLM judge using criteria and an optional threshold.
@@ -171,6 +190,8 @@ $result = AIEval::agent(SupportAgent::class)
 ```
 
 At least one expectation is required.
+
+For dataset evals, `run()` returns a dataset result containing one `EvalResult` per row.
 
 ## `assertPasses()`
 

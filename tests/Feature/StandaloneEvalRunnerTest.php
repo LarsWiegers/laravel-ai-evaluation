@@ -396,6 +396,66 @@ PHP,
     expect($payload['cases'][1]['failures'][0])->toContain('must return an EvalResult');
 });
 
+it('expands dataset eval results into standalone report cases', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    mkdir(base_path("{$path}/datasets"), 0777, true);
+    file_put_contents(base_path("{$path}/datasets/refunds.json"), json_encode([
+        [
+            'name' => 'inside window',
+            'input' => 'Can I get a refund?',
+            'required_terms' => ['refund', '30 days'],
+        ],
+        [
+            'name' => 'missing terms',
+            'input' => 'Can I get a refund?',
+            'required_terms' => ['wire transfer'],
+        ],
+    ], JSON_PRETTY_PRINT));
+
+    file_put_contents(
+        base_path("{$path}/dataset.eval.php"),
+        <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('refund-dataset', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'Refunds are available within 30 days.';
+            }
+        })
+            ->dataset('DATASET_PATH')
+            ->expectContainsFrom('required_terms')
+            ->run();
+    });
+};
+PHP,
+    );
+
+    $evalFile = base_path("{$path}/dataset.eval.php");
+    file_put_contents($evalFile, str_replace('DATASET_PATH', "{$path}/datasets/refunds.json", (string) file_get_contents($evalFile)));
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'json');
+
+    $payload = json_decode(implode('', $lines), true);
+
+    expect($exitCode)->toBe(1);
+    expect($payload['total'])->toBe(2);
+    expect($payload['cases'][0]['name'])->toBe('refund-dataset / inside window');
+    expect($payload['cases'][1]['name'])->toBe('refund-dataset / missing terms');
+});
+
 it('rejects unsupported report formats', function () {
     $runner = app(StandaloneEvalRunner::class);
     $path = createStandaloneEvalDirectory();
