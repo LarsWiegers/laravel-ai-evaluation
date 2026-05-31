@@ -456,6 +456,55 @@ PHP,
     expect($payload['cases'][1]['name'])->toBe('refund-dataset / missing terms');
 });
 
+it('reports empty dataset evals as failed standalone cases', function () {
+    $runner = app(StandaloneEvalRunner::class);
+    $path = createStandaloneEvalDirectory();
+
+    mkdir(base_path("{$path}/datasets"), 0777, true);
+    file_put_contents(base_path("{$path}/datasets/empty.json"), '[]');
+    file_put_contents(
+        base_path("{$path}/empty-dataset.eval.php"),
+        <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use LaravelAIEvaluation\AIEval;
+use LaravelAIEvaluation\Standalone\StandaloneEvalSuite;
+
+return static function (StandaloneEvalSuite $suite): void {
+    $suite->eval('empty-dataset', static function () {
+        return AIEval::agent(new class {
+            public function prompt(string $prompt): string
+            {
+                return 'unused';
+            }
+        })
+            ->dataset('DATASET_PATH')
+            ->expectContains('unused')
+            ->run();
+    });
+};
+PHP,
+    );
+
+    $evalFile = base_path("{$path}/empty-dataset.eval.php");
+    file_put_contents($evalFile, str_replace('DATASET_PATH', "{$path}/datasets/empty.json", (string) file_get_contents($evalFile)));
+
+    $lines = [];
+    $exitCode = $runner->run($path, null, static function (string $buffer) use (&$lines): void {
+        $lines[] = $buffer;
+    }, 'json');
+
+    $payload = json_decode(implode('', $lines), true);
+
+    expect($exitCode)->toBe(1);
+    expect($payload['matched_filter'])->toBeTrue();
+    expect($payload['total'])->toBe(1);
+    expect($payload['cases'][0]['name'])->toBe('empty-dataset');
+    expect($payload['cases'][0]['failures'])->toBe(['Dataset contains no rows.']);
+});
+
 it('rejects unsupported report formats', function () {
     $runner = app(StandaloneEvalRunner::class);
     $path = createStandaloneEvalDirectory();

@@ -56,6 +56,16 @@ class StandaloneEvalCaseResult
         );
     }
 
+    public static function failed(string $name, ?string $location, string $failure, StandaloneReportSanitizer $sanitizer): self
+    {
+        return new self(
+            name: $name,
+            passed: false,
+            location: $sanitizer->location($location),
+            failures: [$sanitizer->failure($failure)],
+        );
+    }
+
     public function errored(): bool
     {
         return $this->exceptionClass !== null;

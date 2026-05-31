@@ -62,6 +62,12 @@ class StandaloneEvalRunner
                     });
 
                     if ($result instanceof DatasetEvalResult) {
+                        if ($result->results() === []) {
+                            $cases[] = StandaloneEvalCaseResult::failed($name, sprintf('%s:1', $file), 'Dataset contains no rows.', $sanitizer);
+
+                            continue;
+                        }
+
                         foreach ($result->results() as $datasetResult) {
                             $cases[] = StandaloneEvalCaseResult::fromEvalResult($datasetResult->toArray()['name'], $datasetResult, $sanitizer);
                         }
