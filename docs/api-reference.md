@@ -20,7 +20,7 @@ Sets the eval name shown in output and failure messages.
 ->name('refund-policy')
 ```
 
-If omitted, the package tries to infer the Pest test name or standalone suite name.
+If omitted, the package tries to infer the current test or eval suite name.
 
 ## `input()`
 
@@ -170,7 +170,7 @@ Runs the builder once for each row in a JSON, PHP, or CSV dataset.
 
 Dataset rows should be JSON objects. The default input column is `input`, and the default row name column is `name`.
 
-PHP datasets should return the same row array shape from a PHP file, similar to Pest dataset files.
+PHP datasets should return the same row array shape from a PHP file.
 
 CSV datasets should include a header row. CSV cell values are strings.
 
@@ -242,7 +242,7 @@ For dataset evals, `run()` returns a dataset result containing one `EvalResult` 
 
 ## `assertPasses()`
 
-Fails the current Pest/PHPUnit test, or throws a runtime exception outside PHPUnit, if the eval failed.
+Throws a PHPUnit expectation failure when PHPUnit is available, or a runtime exception otherwise, if the eval failed.
 
 ```php
 ->run()
@@ -271,7 +271,7 @@ Useful methods on the result object:
 
 ## `php artisan ai-evals:run`
 
-Runs standalone eval files.
+Runs eval files through the Artisan runner.
 
 ```bash
 php artisan ai-evals:run {path?} --filter="refund" --format=json --output=storage/ai-evals/results.json
@@ -288,6 +288,6 @@ For examples of each report format, see [Output formats](/output-formats).
 Formats:
 
 - `text` prints the human-readable terminal report and is the default.
-- `json` prints or writes the full standalone run report as JSON.
+- `json` prints or writes the full runner report as JSON.
 - `junit` prints or writes JUnit XML for CI test report UIs.
 - `github` prints GitHub Actions `::error file=...,line=...::...` annotations for failed evals.

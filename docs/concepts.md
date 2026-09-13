@@ -45,17 +45,15 @@ Use judge expectations when quality is semantic:
 
 Prefer deterministic checks when they are enough. Add judge checks when phrasing can vary but quality still matters.
 
-## Run modes
+## Running evals
 
-Pest mode is best when you want evals to live beside your test suite and fail through PHPUnit assertions.
-
-Standalone mode is best when you want a dedicated eval command:
+Run generated eval suites with the dedicated Artisan command:
 
 ```bash
 php artisan ai-evals:run
 ```
 
-Both modes call real agents and can be used in CI.
+The runner calls real agents and can be used in CI.
 
 ## Naming evals
 

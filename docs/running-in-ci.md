@@ -1,6 +1,6 @@
 # Run in CI
 
-You can run agent evals in CI with the standalone command.
+You can run agent evals in CI with the Artisan runner.
 
 ## GitHub Actions example
 
@@ -72,7 +72,7 @@ php artisan ai-evals:run --format=github
 
 ## Report formats
 
-The standalone runner supports four report formats.
+The runner supports four report formats.
 
 For complete examples of each format, see [Output formats](/output-formats).
 
@@ -124,6 +124,6 @@ Keep live eval jobs serial unless each job has its own provider key and quota.
 - Keep `AI_EVAL_REPORT_INCLUDE_INPUT=false` unless prompts are safe to publish as CI artifacts.
 - Use `AI_EVAL_REPORT_MAX_OUTPUT_LENGTH` and `AI_EVAL_REPORT_MAX_FAILURE_LENGTH` to keep reports concise.
 - Keep eval jobs serial to reduce `429` bursts when using a shared provider key.
-- Start with a small `tests/AgentEvals` standalone `*.eval.php` set and expand gradually.
-- Standalone report formats support `text`, `json`, `junit`, and `github`; see [Output formats](/output-formats) for examples.
+- Start with a small `tests/AgentEvals` `*.eval.php` set and expand gradually.
+- Runner report formats support `text`, `json`, `junit`, and `github`; see [Output formats](/output-formats) for examples.
 - If CI hits `429`/rate limits, follow the dedicated guide: [Dealing with rate limits](/dealing-with-rate-limits).

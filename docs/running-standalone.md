@@ -1,8 +1,8 @@
-# Run standalone
+# Run evals
 
-If you want to run AI evals without Pest or PHPUnit, use the built-in Artisan command.
+Run AI evals with the built-in Artisan command.
 
-## Run all standalone evals
+## Run all evals
 
 ```bash
 php artisan ai-evals:run
@@ -24,7 +24,7 @@ php artisan ai-evals:run --filter="refund policy"
 
 By default, the command runs `tests/AgentEvals`.
 
-To customize the default standalone folder, set:
+To customize the default eval folder, set:
 
 ```php
 // config/laravel-ai-evaluation.php
@@ -33,9 +33,9 @@ To customize the default standalone folder, set:
 ],
 ```
 
-## Standalone eval file format
+## Eval file format
 
-Each standalone eval file should use a `*.eval.php` filename and return a callable that receives `StandaloneEvalSuite` and registers one or more eval cases.
+Each eval file should use a `*.eval.php` filename and return a callable that receives `StandaloneEvalSuite` and registers one or more eval cases.
 
 ```php
 <?php
@@ -55,7 +55,7 @@ return static function (StandaloneEvalSuite $suite): void {
 
 ## Dataset evals
 
-Standalone evals may return dataset results. The runner expands each dataset row into its own output/report case:
+Eval suites may return dataset results. The runner expands each dataset row into its own output/report case:
 
 ```php
 return static function (StandaloneEvalSuite $suite): void {
@@ -111,7 +111,7 @@ php artisan ai-evals:run --format=junit --output=storage/ai-evals/junit.xml
 php artisan ai-evals:run --format=github
 ```
 
-Supported standalone report formats are `text`, `json`, `junit`, and `github`.
+Supported runner report formats are `text`, `json`, `junit`, and `github`.
 
 Use `text` for local development and quick terminal feedback.
 
@@ -161,7 +161,7 @@ Inputs are omitted by default. Outputs are included by default but truncated and
 
 ## Verbose output and summaries
 
-The standalone runner supports verbose eval output format configuration:
+The runner supports verbose eval output format configuration:
 
 ```dotenv
 AI_EVAL_VERBOSE=true

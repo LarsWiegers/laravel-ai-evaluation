@@ -54,8 +54,7 @@ class InstallAgentEvalsCommand extends Command
         $this->components->info(sprintf('Ensured eval directory: %s', $relativePath));
         $this->newLine();
         $this->components->info('Next steps:');
-        $this->line('  - php artisan make:ai-evals refund-policy --type=pest');
-        $this->line('  - php artisan make:ai-evals refund-policy --type=standalone');
+        $this->line('  - php artisan make:ai-evals refund-policy');
         $this->line('  - php artisan ai-evals:run');
 
         return self::SUCCESS;

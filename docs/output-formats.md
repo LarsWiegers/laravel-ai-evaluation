@@ -1,6 +1,6 @@
 # Output formats
 
-The standalone runner can write reports in four formats: `text`, `json`, `junit`, and `github`.
+The Artisan runner can write reports in four formats: `text`, `json`, `junit`, and `github`.
 
 Use `--format` to choose a format and `--output` to write it to a file.
 
@@ -25,7 +25,7 @@ FAIL unsafe-refund-policy
   - Missing required substring(s): 30 days
   - Output contained forbidden substring(s): always approved
 
-Standalone eval summary: total=2 passed=1 failed=1
+Eval summary: total=2 passed=1 failed=1
 ```
 
 ## `json`

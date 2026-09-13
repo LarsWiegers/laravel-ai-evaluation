@@ -21,35 +21,14 @@ php artisan ai-evals:install
 Generate your first eval file:
 
 ```bash
-php artisan make:ai-evals refund-policy --type=pest
+php artisan make:ai-evals refund-policy
 ```
 
-Or standalone:
-
-```bash
-php artisan make:ai-evals refund-policy --type=standalone
-```
-
-## Default test case (Pest)
-
-Make sure your `tests/Pest.php` includes `AgentEvals` so Pest discovers generated eval tests:
-
-```php
-<?php
-
-declare(strict_types=1);
-
-use Tests\TestCase;
-
-pest()->extend(TestCase::class)
-    ->in('Feature', 'AgentEvals');
-```
-
-If you use a custom base test case, replace `Tests\TestCase` with your project test case class.
+Run generated evals with `php artisan ai-evals:run`.
 
 ## Optional: publish config
 
-If you want to customize defaults (format, retries, summaries, report safety, standalone path, or judge agent), publish the config file:
+If you want to customize defaults (format, retries, summaries, report safety, eval path, or judge agent), publish the config file:
 
 ```bash
 php artisan vendor:publish --tag=laravel-ai-evaluation-config

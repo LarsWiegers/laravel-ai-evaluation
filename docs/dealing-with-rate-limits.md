@@ -16,7 +16,7 @@ Common causes:
 
 ## Recommended baseline
 
-Use standalone eval runs for live model checks and keep them serial:
+Use the Artisan runner for live model checks and keep runs serial:
 
 ```bash
 php artisan ai-evals:run
@@ -46,16 +46,6 @@ Use a dedicated serial job for evals:
 ```
 
 Also avoid matrix fan-out for live eval jobs unless each job has its own provider key and quota.
-
-## If you run evals in Pest
-
-Prefer a non-parallel run for eval tests:
-
-```bash
-vendor/bin/pest tests/AgentEvals
-```
-
-Avoid `--parallel` for live eval suites.
 
 ## Fast troubleshooting checklist
 
