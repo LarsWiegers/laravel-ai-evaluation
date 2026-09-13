@@ -2,31 +2,11 @@
 
 declare(strict_types=1);
 
-it('creates a pest eval test file', function () {
+it('creates an eval file for the Artisan runner', function () {
     $path = createMakeEvalDirectory();
 
     $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'pest',
-        '--path' => $path,
-    ])->assertExitCode(0);
-
-    $file = base_path($path.'/RefundPolicyEvalTest.php');
-
-    expect(is_file($file))->toBeTrue();
-
-    $content = (string) file_get_contents($file);
-
-    expect($content)->toContain("it('refund-policy'");
-    expect($content)->toContain('->assertPasses();');
-});
-
-it('creates a standalone eval file', function () {
-    $path = createMakeEvalDirectory();
-
-    $this->artisan('make:ai-evals', [
-        'name' => 'refund-policy',
-        '--type' => 'standalone',
         '--path' => $path,
     ])->assertExitCode(0);
 
@@ -41,12 +21,11 @@ it('creates a standalone eval file', function () {
     expect($content)->not->toContain('->assertPasses();');
 });
 
-it('preserves eval name casing for standalone file name and suite label', function () {
+it('preserves eval name casing for file name and suite label', function () {
     $path = createMakeEvalDirectory();
 
     $this->artisan('make:ai-evals', [
         'name' => 'FinancialAdvisorAgent',
-        '--type' => 'standalone',
         '--path' => $path,
     ])->assertExitCode(0);
 
@@ -64,12 +43,11 @@ it('uses custom agent class in generated templates', function () {
 
     $this->artisan('make:ai-evals', [
         'name' => 'custom-agent',
-        '--type' => 'pest',
         '--path' => $path,
         '--agent' => 'App\\Ai\\Agents\\BillingAgent',
     ])->assertExitCode(0);
 
-    $file = base_path($path.'/CustomAgentEvalTest.php');
+    $file = base_path($path.'/custom-agent.eval.php');
 
     expect(is_file($file))->toBeTrue();
 
@@ -78,34 +56,23 @@ it('uses custom agent class in generated templates', function () {
     expect($content)->toContain('AIEval::agent(App\\Ai\\Agents\\BillingAgent::class)');
 });
 
-it('scaffolds the same custom agent class for pest and standalone templates', function () {
+it('scaffolds the custom agent class in the eval suite', function () {
     $path = createMakeEvalDirectory();
     $agent = 'App\\Ai\\Agents\\BillingAgent';
 
     $this->artisan('make:ai-evals', [
-        'name' => 'billing-pest',
-        '--type' => 'pest',
+        'name' => 'billing',
         '--path' => $path,
         '--agent' => $agent,
     ])->assertExitCode(0);
 
-    $this->artisan('make:ai-evals', [
-        'name' => 'billing-standalone',
-        '--type' => 'standalone',
-        '--path' => $path,
-        '--agent' => $agent,
-    ])->assertExitCode(0);
+    $file = base_path($path.'/billing.eval.php');
 
-    $pestFile = base_path($path.'/BillingPestEvalTest.php');
-    $standaloneFile = base_path($path.'/billing-standalone.eval.php');
-
-    expect(is_file($pestFile))->toBeTrue();
-    expect(is_file($standaloneFile))->toBeTrue();
+    expect(is_file($file))->toBeTrue();
 
     $expectedAgentLine = 'AIEval::agent(App\\Ai\\Agents\\BillingAgent::class)';
 
-    expect((string) file_get_contents($pestFile))->toContain($expectedAgentLine);
-    expect((string) file_get_contents($standaloneFile))->toContain($expectedAgentLine);
+    expect((string) file_get_contents($file))->toContain($expectedAgentLine);
 });
 
 it('creates dataset backed eval files and sample datasets', function () {
@@ -113,7 +80,6 @@ it('creates dataset backed eval files and sample datasets', function () {
 
     $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'standalone',
         '--path' => $path,
         '--dataset' => true,
     ])->assertExitCode(0);
@@ -128,14 +94,14 @@ it('creates dataset backed eval files and sample datasets', function () {
     expect((string) file_get_contents($datasetFile))->toContain('refund inside window');
 });
 
-it('fails for invalid eval type', function () {
+it('does not support selecting a test framework', function () {
     $path = createMakeEvalDirectory();
 
-    $this->artisan('make:ai-evals', [
+    expect(fn () => $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'xml',
+        '--type' => 'pest',
         '--path' => $path,
-    ])->assertExitCode(1);
+    ]))->toThrow(\Symfony\Component\Console\Exception\InvalidOptionException::class, 'The "--type" option does not exist.');
 });
 
 it('fails when file exists unless force is provided', function () {
@@ -143,22 +109,19 @@ it('fails when file exists unless force is provided', function () {
 
     $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'pest',
         '--path' => $path,
     ])->assertExitCode(0);
 
     $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'pest',
         '--path' => $path,
     ])->assertExitCode(1);
 
-    $file = base_path($path.'/RefundPolicyEvalTest.php');
+    $file = base_path($path.'/refund-policy.eval.php');
     file_put_contents($file, 'modified');
 
     $this->artisan('make:ai-evals', [
         'name' => 'refund-policy',
-        '--type' => 'pest',
         '--path' => $path,
         '--force' => true,
     ])->assertExitCode(0);

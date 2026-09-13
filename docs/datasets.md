@@ -23,7 +23,7 @@ Each row should be an object. The optional `name` column is used in failures and
 
 ## PHP dataset
 
-PHP datasets work like Pest dataset files: return an array of rows from a PHP file.
+PHP datasets return an array of rows from a PHP file.
 
 ```php
 <?php
@@ -51,26 +51,7 @@ refund inside window,I bought this last week. Can I get a refund?,refund,guarant
 
 CSV cells are strings. Use JSON or PHP datasets when a row needs arrays such as multiple `required_terms`.
 
-## Pest example
-
-```php
-use LaravelAIEvaluation\AIEval;
-
-it('answers refund dataset cases', function () {
-    AIEval::agent(App\Ai\Agents\SupportAgent::class)
-        ->name('refund-policy')
-        ->dataset('tests/AgentEvals/datasets/refunds.json')
-        ->inputColumn('input')
-        ->expectContainsFrom('required_terms')
-        ->expectNotContainsFrom('forbidden_terms')
-        ->run()
-        ->assertPasses();
-});
-```
-
-`run()` returns a dataset result with one `EvalResult` per row. `assertPasses()` fails if any row fails.
-
-## Standalone example
+## Eval suite example
 
 ```php
 use LaravelAIEvaluation\AIEval;
@@ -88,12 +69,12 @@ return static function (StandaloneEvalSuite $suite): void {
 };
 ```
 
-The standalone runner expands dataset results into separate report cases, such as `refund-policy / refund inside window`.
+The Artisan runner expands dataset results into separate report cases, such as `refund-policy / refund inside window`.
 
 ## Scaffold a dataset eval
 
 ```bash
-php artisan make:ai-evals refund-policy --type=standalone --dataset
+php artisan make:ai-evals refund-policy --dataset
 ```
 
 This creates both an eval file and a starter dataset file in `tests/AgentEvals/datasets`.

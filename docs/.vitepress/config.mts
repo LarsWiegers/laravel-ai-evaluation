@@ -14,12 +14,8 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'First Eval', link: '/first-eval' },
       {
-        text: 'Pest',
-        items: [{ text: 'Run in Pest', link: '/running-in-pest' }],
-      },
-      {
-        text: 'Standalone',
-        items: [{ text: 'Run standalone', link: '/running-standalone' }],
+        text: 'Runner',
+        items: [{ text: 'Run evals', link: '/running-standalone' }],
       },
       {
         text: 'Expectations',
@@ -82,12 +78,8 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Pest',
-        items: [{ text: 'Run in Pest', link: '/running-in-pest' }],
-      },
-      {
-        text: 'Standalone',
-        items: [{ text: 'Run standalone', link: '/running-standalone' }],
+        text: 'Runner',
+        items: [{ text: 'Run evals', link: '/running-standalone' }],
       },
       {
         text: 'Expectations',

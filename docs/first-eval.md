@@ -11,16 +11,8 @@ php artisan ai-evals:install
 
 ## 2) Generate an eval
 
-Choose Pest if you already run your test suite with Pest:
-
 ```bash
-php artisan make:ai-evals refund-policy --type=pest --agent="App\\Ai\\Agents\\SupportAgent"
-```
-
-Or choose standalone if you want to run evals without PHPUnit:
-
-```bash
-php artisan make:ai-evals refund-policy --type=standalone --agent="App\\Ai\\Agents\\SupportAgent"
+php artisan make:ai-evals refund-policy --agent="App\\Ai\\Agents\\SupportAgent"
 ```
 
 ## 3) Edit the generated eval
@@ -53,14 +45,6 @@ Use the provider key names expected by your Laravel AI setup.
 
 ## 5) Run it
 
-For Pest:
-
-```bash
-vendor/bin/pest tests/AgentEvals
-```
-
-For standalone evals:
-
 ```bash
 php artisan ai-evals:run
 ```
@@ -83,5 +67,5 @@ That failure is the point of the package: prompt, model, tool, or retrieval chan
 ## Next steps
 
 - Learn the mental model in [Concepts](/concepts).
-- Choose a run mode: [Run in Pest](/running-in-pest) or [Run standalone](/running-standalone).
+- Learn how to run and report suites with [Run evals](/running-standalone).
 - Add semantic checks with [LLM-as-judge expectations](/llm-as-judge-expectations).

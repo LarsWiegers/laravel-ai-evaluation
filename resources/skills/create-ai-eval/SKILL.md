@@ -3,7 +3,7 @@ name: create-ai-eval
 description: >-
   Use when creating, improving, or running Laravel AI agent evals with
   larswiegers/laravel-ai-evaluation. Guides agents through package setup,
-  eval design, Pest or standalone files, expectations, judges, and verification.
+   eval design, Artisan-run eval files, expectations, judges, and verification.
 author: Lars Wiegers
 ---
 
@@ -23,7 +23,7 @@ Use this skill when the user asks to:
 - Add eval coverage for a Laravel AI agent.
 - Test real model behavior, prompts, retrieval, tools, or agent instructions.
 - Convert a known support, billing, sales, scheduling, or policy scenario into an eval.
-- Run AI evals in Pest, Artisan, or CI.
+- Run AI evals with Artisan or in CI.
 - Add deterministic or LLM-as-judge checks for AI responses.
 
 Do not use AI evals as a replacement for normal unit or feature tests. Use unit
@@ -62,43 +62,9 @@ php artisan ai-evals:install
 
 The Laravel service provider is auto-discovered.
 
-If Pest evals are used, make sure `tests/Pest.php` discovers `tests/AgentEvals`:
+## Run Eval Suites
 
-```php
-<?php
-
-declare(strict_types=1);
-
-use Tests\TestCase;
-
-pest()->extend(TestCase::class)
-    ->in('Feature', 'AgentEvals');
-```
-
-If the app uses a custom base test case, use that class instead of
-`Tests\TestCase`.
-
-## Choose Pest Or Standalone
-
-Use Pest when:
-
-- The project already uses Pest.
-- The user wants evals to fail through PHPUnit assertions.
-- The eval should live with the regular test suite.
-
-Run Pest evals with:
-
-```bash
-vendor/bin/pest tests/AgentEvals
-```
-
-Use standalone when:
-
-- The user wants a dedicated eval command.
-- The eval suite should run separately from PHPUnit.
-- CI should have a serial live-model eval job.
-
-Run standalone evals with:
+Run eval suites with the dedicated Artisan command:
 
 ```bash
 php artisan ai-evals:run
@@ -116,48 +82,21 @@ php artisan ai-evals:run --filter="refund policy"
 Use the built-in generator when possible:
 
 ```bash
-php artisan make:ai-evals refund-policy --type=pest --agent="App\\Ai\\Agents\\SupportAgent"
-php artisan make:ai-evals refund-policy --type=standalone --agent="App\\Ai\\Agents\\SupportAgent"
+php artisan make:ai-evals refund-policy --agent="App\\Ai\\Agents\\SupportAgent"
 ```
 
 Options:
 
-- `--type=pest` creates `tests/AgentEvals/RefundPolicyEvalTest.php`.
-- `--type=standalone` creates `tests/AgentEvals/refund-policy.eval.php`.
+- Generated files use the `tests/AgentEvals/refund-policy.eval.php` format.
 - `--path=tests/AgentEvals/Billing` writes to a custom relative directory.
 - `--force` overwrites an existing generated file.
 
 The generated prompt and expectation are placeholders. Always edit them to
 match the application behavior being evaluated.
 
-## Pest Eval Template
+## Eval Suite Template
 
-Use this shape for Pest evals:
-
-```php
-<?php
-
-declare(strict_types=1);
-
-use App\Ai\Agents\SupportAgent;
-use LaravelAIEvaluation\AIEval;
-
-it('answers refund policy questions', function () {
-    AIEval::agent(SupportAgent::class)
-        ->name('refund-policy')
-        ->input('Can I get a refund if I bought the plan last week?')
-        ->expectContains(['refund', '30 days'])
-        ->run()
-        ->assertPasses();
-});
-```
-
-The resolved agent must implement `Laravel\Ai\Contracts\Agent` or expose a
-`prompt(string $prompt)` method.
-
-## Standalone Eval Template
-
-Use this shape for standalone evals:
+Use this shape for eval suites:
 
 ```php
 <?php
@@ -178,7 +117,7 @@ return static function (StandaloneEvalSuite $suite): void {
 };
 ```
 
-Standalone files must use the `*.eval.php` filename convention and return a
+Eval files must use the `*.eval.php` filename convention and return a
 callable that registers one or more `$suite->eval(...)` cases.
 
 ## Designing Good Eval Cases
@@ -312,27 +251,18 @@ fails the eval.
 
 ## Running And Verifying
 
-For Pest evals:
-
-```bash
-vendor/bin/pest tests/AgentEvals
-```
-
-For standalone evals:
-
 ```bash
 php artisan ai-evals:run
 ```
 
-For local iteration on one standalone case:
+For local iteration on one eval case:
 
 ```bash
 php artisan ai-evals:run --filter="refund-policy"
 ```
 
-Do not run live evals with Pest parallel workers. Parallel model calls can hit
-provider rate limits. If rate limits happen, keep eval runs serial and use
-conservative retry settings:
+Keep live eval runs serial. If rate limits happen, use conservative retry
+settings:
 
 ```dotenv
 AI_EVAL_RETRIES=2
@@ -349,7 +279,7 @@ AI_EVAL_SUMMARY_FORMAT=text
 AI_EVAL_SUMMARY_CURRENCY=USD
 ```
 
-`AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` support `text` and `json` for verbose dumps and summaries. Standalone reports also support `text`, `json`, `junit`, and `github` via `php artisan ai-evals:run --format=...`.
+`AI_EVAL_FORMAT` and `AI_EVAL_SUMMARY_FORMAT` support `text` and `json` for verbose dumps and summaries. Runner reports also support `text`, `json`, `junit`, and `github` via `php artisan ai-evals:run --format=...`.
 
 ## Credentials And Safety
 
@@ -376,10 +306,9 @@ AI_EVAL_RETRY_SLEEP_MS=250
 
 If eval discovery fails:
 
-- Confirm Pest includes `AgentEvals` in `tests/Pest.php`.
-- Confirm standalone eval files end in `.eval.php`.
-- Confirm standalone eval files return a callable accepting `StandaloneEvalSuite`.
-- Confirm `config/laravel-ai-evaluation.php` has the expected standalone path.
+- Confirm eval files end in `.eval.php`.
+- Confirm eval files return a callable accepting `StandaloneEvalSuite`.
+- Confirm `config/laravel-ai-evaluation.php` has the expected eval path.
 
 If an eval has no expectations:
 
@@ -399,8 +328,7 @@ If judge expectations fail because of invalid judge output:
 
 If rate limits occur:
 
-- Do not use `vendor/bin/pest --parallel` for live evals.
-- Prefer `php artisan ai-evals:run` in a dedicated serial CI job.
+- Use `php artisan ai-evals:run` in a dedicated serial CI job.
 - Increase `AI_EVAL_RETRY_SLEEP_MS` to `750` or `1000` if needed.
 
 ## Quality Bar

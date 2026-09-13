@@ -6,7 +6,6 @@ namespace LaravelAIEvaluation;
 
 use Illuminate\Support\ServiceProvider;
 use LaravelAIEvaluation\Console\InstallAgentEvalsCommand;
-use LaravelAIEvaluation\Console\PestProcessRunner;
 use LaravelAIEvaluation\Console\MakeAgentEvalCommand;
 use LaravelAIEvaluation\Console\RunAgentEvalsCommand;
 use LaravelAIEvaluation\Console\StandaloneEvalRunner;

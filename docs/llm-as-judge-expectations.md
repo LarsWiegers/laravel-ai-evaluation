@@ -125,4 +125,4 @@ AIEval::agent(SupportAgent::class)
 - Any expectation below threshold fails the eval.
 - Prefer explicit criteria with product requirements, not vague instructions like "good answer".
 - Use `expectJudgeAgainst()` when you have a known-good reference answer.
-- In CI this causes hard-fail behavior when using Pest or `php artisan ai-evals:run`.
+- In CI this causes hard-fail behavior when using `php artisan ai-evals:run`.
