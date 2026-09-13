@@ -6,6 +6,7 @@ All notable changes to `laravel-ai-evaluation` will be documented in this file
 
 - Changed eval scaffolding and documentation to use the Artisan eval runner exclusively.
 - Removed the Pest-specific `make:ai-evals --type=pest` generator mode.
+- Added CI coverage for Laravel AI `0.5` through `0.11`.
 
 ## 1.0.0 - 2026-04-18
 
