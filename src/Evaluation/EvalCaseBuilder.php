@@ -190,6 +190,40 @@ class EvalCaseBuilder
         return $this;
     }
 
+    public function expectToolCalled(string $name): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'tool_called',
+            'name' => $name,
+        ];
+
+        return $this;
+    }
+
+    public function expectToolNotCalled(string $name): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'tool_not_called',
+            'name' => $name,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    public function expectToolCalledWith(string $name, array $arguments): self
+    {
+        $this->deterministicExpectations[] = [
+            'type' => 'tool_called_with',
+            'name' => $name,
+            'arguments' => $arguments,
+        ];
+
+        return $this;
+    }
+
     public function expect(callable|object|string $expectation): self
     {
         $this->customExpectations[] = $expectation;

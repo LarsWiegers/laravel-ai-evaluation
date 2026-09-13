@@ -24,6 +24,59 @@ it('passes exact expectation using agent instance', function () {
     expect($result->passed())->toBeTrue();
 });
 
+it('passes tool expectations from laravel ai response traces', function () {
+    $result = AIEval::agent(new FakeTracedToolAgent)
+        ->name('tool-trace')
+        ->input('Can you refund order #123?')
+        ->expectToolCalled('lookupOrder')
+        ->expectToolCalledWith('lookupOrder', ['order_id' => '123'])
+        ->expectToolNotCalled('issueRefund')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->toolCalls())->toHaveCount(1);
+    expect($result->toArray()['tool_calls'][0])->toMatchArray([
+        'name' => 'lookupOrder',
+        'arguments' => ['order_id' => '123', 'include_payments' => true],
+        'source' => 'response',
+    ]);
+});
+
+it('passes tool expectations from manual instrumentation', function () {
+    $result = AIEval::agent(new FakeManuallyInstrumentedToolAgent)
+        ->name('manual-tool-trace')
+        ->input('Can you refund order #123?')
+        ->expectToolCalled('lookupOrder')
+        ->expectToolCalledWith('lookupOrder', ['order_id' => '123'])
+        ->expectToolNotCalled('issueRefund')
+        ->run();
+
+    expect($result->passed())->toBeTrue();
+    expect($result->toArray()['tool_calls'][0]['source'])->toBe('manual');
+});
+
+it('fails when unsafe tools are called', function () {
+    $result = AIEval::agent(new FakeUnsafeToolAgent)
+        ->name('unsafe-tool-trace')
+        ->input('Can you refund order #123?')
+        ->expectToolNotCalled('issueRefund')
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures()[0])->toContain('Expected tool "issueRefund" not to be called');
+});
+
+it('fails when expected tool arguments are missing', function () {
+    $result = AIEval::agent(new FakeTracedToolAgent)
+        ->name('missing-tool-arguments')
+        ->input('Can you refund order #123?')
+        ->expectToolCalledWith('lookupOrder', ['order_id' => '456'])
+        ->run();
+
+    expect($result->passed())->toBeFalse();
+    expect($result->failures()[0])->toContain('Expected tool "lookupOrder" to be called with arguments');
+});
+
 it('throws when expectations fail', function () {
     AIEval::agent(new FakeHealthcheckAgent)
         ->name('failing-case')
@@ -330,6 +383,46 @@ class FakeHealthcheckAgent
     public function prompt(string $prompt): string
     {
         return 'OK';
+    }
+}
+
+class FakeTracedToolAgent
+{
+    public function prompt(string $prompt): object
+    {
+        return (object) [
+            'text' => 'Refund approval requires confirmation before any refund is issued.',
+            'toolCalls' => [
+                (object) [
+                    'id' => 'call_1',
+                    'name' => 'lookupOrder',
+                    'arguments' => ['order_id' => '123', 'include_payments' => true],
+                ],
+            ],
+        ];
+    }
+}
+
+class FakeManuallyInstrumentedToolAgent
+{
+    public function prompt(string $prompt): string
+    {
+        AIEval::recordToolCall('lookupOrder', ['order_id' => '123']);
+
+        return 'Refund approval requires confirmation before any refund is issued.';
+    }
+}
+
+class FakeUnsafeToolAgent
+{
+    public function prompt(string $prompt): object
+    {
+        return (object) [
+            'text' => 'Refund approval requires confirmation before any refund is issued.',
+            'toolCalls' => [
+                ['name' => 'issueRefund', 'arguments' => ['order_id' => '123']],
+            ],
+        ];
     }
 }
 

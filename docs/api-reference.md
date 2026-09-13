@@ -114,6 +114,37 @@ Requires the output to end with a string.
 ->expectEndsWith('}')
 ```
 
+## Tool call expectations
+
+Checks the normalized tool-call trace captured from Laravel AI responses or manual instrumentation.
+
+```php
+->expectToolCalled('lookupOrder')
+->expectToolCalledWith('lookupOrder', ['order_id' => '123'])
+->expectToolNotCalled('issueRefund')
+```
+
+`expectToolCalledWith()` treats the expected arguments as a subset, so the tool call may include additional arguments.
+
+Tool calls are normalized on `EvalResult` as:
+
+```php
+[
+    'id' => 'call_123',
+    'name' => 'lookupOrder',
+    'arguments' => ['order_id' => '123'],
+    'source' => 'response', // or "manual"
+]
+```
+
+For apps that need to report tool calls explicitly, call `AIEval::recordToolCall()` inside the evaluated code path:
+
+```php
+AIEval::recordToolCall('lookupOrder', ['order_id' => '123']);
+```
+
+Use `expectToolNotCalled()` for side-effecting tools such as refunds, emails, writes, or data exports, but still run evals against fakes, sandboxes, or dry-run tool implementations. The assertion verifies the recorded trace; it does not make a real side-effecting tool safe to execute.
+
 ## `expect()`
 
 Adds a custom expectation. Accepts closures, expectation objects, invokable objects, or container-resolvable class strings.
@@ -236,6 +267,7 @@ Useful methods on the result object:
 - `output()` returns the normalized agent output.
 - `expectationResults()` returns details for each expectation.
 - `usage()` returns token and cost usage when the provider response exposes it.
+- `toolCalls()` returns normalized tool calls captured during the eval.
 
 ## `php artisan ai-evals:run`
 

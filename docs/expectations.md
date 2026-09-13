@@ -10,6 +10,8 @@ Expectations define how an eval case passes or fails.
 - [Dataset evals](./datasets)
 - [Conversation evals](./conversation-evals)
 
+Tool call assertions such as `expectToolCalled`, `expectToolCalledWith`, and `expectToolNotCalled` are documented with deterministic expectations because they evaluate the recorded execution trace without another model call.
+
 More expectation types can be added over time.
 
 For method signatures and return values, see the [API reference](/api-reference).

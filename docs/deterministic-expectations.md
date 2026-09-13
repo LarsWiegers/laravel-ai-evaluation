@@ -137,6 +137,37 @@ AIEval::agent(JsonAgent::class)
     ->assertPasses();
 ```
 
+## Tool call expectations
+
+Use tool call expectations when the route to the final answer matters, such as requiring a lookup before answering or preventing a mutating tool call.
+
+```php
+use LaravelAIEvaluation\AIEval;
+
+AIEval::agent(OrderSupportAgent::class)
+    ->input('Can you refund order #123?')
+    ->expectToolCalled('lookupOrder')
+    ->expectToolCalledWith('lookupOrder', ['order_id' => '123'])
+    ->expectToolNotCalled('issueRefund')
+    ->run()
+    ->assertPasses();
+```
+
+Tool calls are captured from Laravel AI responses when `toolCalls` are available. If your app invokes tools outside the provider response trace, record them manually in the evaluated path:
+
+```php
+AIEval::recordToolCall('lookupOrder', ['order_id' => '123']);
+```
+
+Behavior:
+
+- `expectToolCalled` passes when at least one tool call with that name is observed
+- `expectToolNotCalled` passes only when no observed tool call has that name
+- `expectToolCalledWith` compares the expected arguments as a strict subset of the recorded arguments
+- `EvalResult::toolCalls()` and `EvalResult::toArray()['tool_calls']` expose normalized calls with `id`, `name`, `arguments`, and `source`
+
+Side-effecting tools require extra care. These assertions help catch unsafe calls such as `issueRefund`, `sendEmail`, or `exportCustomerData`, but evals should still run against fakes, sandboxes, or dry-run tools. A passing or failing assertion only reflects the recorded trace; it does not undo or isolate a real side effect.
+
 ## Combining expectations
 
 You can combine deterministic expectations in one eval.
